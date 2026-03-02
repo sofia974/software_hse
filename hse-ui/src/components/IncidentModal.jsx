@@ -1,91 +1,101 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react";
 
-export default function IncidentModal({ open, onClose, onCreate, existingIds = [] }) {
-  const [id, setId] = useState("")
-  const [fecha, setFecha] = useState("")
-  const [area, setArea] = useState("")
-  const [tipo, setTipo] = useState("Incidente")
-  const [sev, setSev] = useState("Baja")
-  const [estado, setEstado] = useState("Abierto")
-  const [responsable, setResponsable] = useState("")
-  const [costoEstimado, setCostoEstimado] = useState("")
-  const [descripcion, setDescripcion] = useState("")
-  const [fotos, setFotos] = useState([]) // [{ name, url, file }]
-  const [error, setError] = useState("")
+export default function IncidentModal({
+  open,
+  onClose,
+  onCreate,
+  existingIds = [],
+}) {
+  const [id, setId] = useState("");
+  const [fecha, setFecha] = useState("");
+  const [area, setArea] = useState("");
+  const [tipo, setTipo] = useState("Incidente");
+  const [sev, setSev] = useState("Baja");
+  const [estado, setEstado] = useState("Abierto");
+  const [responsable, setResponsable] = useState("");
+  const [costoEstimado, setCostoEstimado] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [fotos, setFotos] = useState([]); // [{ name, url, file }]
+  const [error, setError] = useState("");
 
   const suggestedId = useMemo(() => {
-    let max = 1000
+    let max = 1000;
     for (const s of existingIds) {
-      const m = String(s).match(/INC-(\d+)/i)
+      const m = String(s).match(/INC-(\d+)/i);
       if (m) {
-        const n = Number(m[1])
-        if (!Number.isNaN(n)) max = Math.max(max, n)
+        const n = Number(m[1]);
+        if (!Number.isNaN(n)) max = Math.max(max, n);
       }
     }
-    return `INC-${max + 1}`
-  }, [existingIds])
+    return `INC-${max + 1}`;
+  }, [existingIds]);
 
   useEffect(() => {
-    if (!open) return
-    setId(suggestedId)
-    setFecha(new Date().toISOString().slice(0, 10))
-    setArea("")
-    setTipo("Incidente")
-    setSev("Baja")
-    setEstado("Abierto")
-    setResponsable("")
-    setCostoEstimado("")
-    setDescripcion("")
-    setFotos([])
-    setError("")
-  }, [open, suggestedId])
+    if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setId(suggestedId);
+    setFecha(new Date().toISOString().slice(0, 10));
+    setArea("");
+    setTipo("Incidente");
+    setSev("Baja");
+    setEstado("Abierto");
+    setResponsable("");
+    setCostoEstimado("");
+    setDescripcion("");
+    setFotos([]);
+    setError("");
+  }, [open, suggestedId]);
 
-  if (!open) return null
+  if (!open) return null;
 
   const close = () => {
-    setError("")
-    onClose?.()
-  }
+    setError("");
+    onClose?.();
+  };
 
   const onPickFiles = (e) => {
-    const files = Array.from(e.target.files || [])
-    if (!files.length) return
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
 
     const mapped = files.map((file) => ({
       name: file.name,
       url: URL.createObjectURL(file),
       file,
-    }))
+    }));
 
-    setFotos((prev) => [...prev, ...mapped])
-    e.target.value = ""
-  }
+    setFotos((prev) => [...prev, ...mapped]);
+    e.target.value = "";
+  };
 
   const removeFoto = (idx) => {
     setFotos((prev) => {
-      const copy = [...prev]
-      const removed = copy[idx]
-      copy.splice(idx, 1)
+      const copy = [...prev];
+      const removed = copy[idx];
+      copy.splice(idx, 1);
       if (removed?.url?.startsWith("blob:")) {
         try {
-          URL.revokeObjectURL(removed.url)
-        } catch {}
+          URL.revokeObjectURL(removed.url);
+        } catch {
+          console.log("Error revoking object URL");
+        }
       }
-      return copy
-    })
-  }
+      return copy;
+    });
+  };
 
   const handleSave = () => {
-    const cleanId = (id || "").trim()
-    if (!cleanId) return setError("El ID es obligatorio.")
-    if (existingIds.includes(cleanId)) return setError("Ese ID ya existe. Cambia el ID.")
-    if (!fecha) return setError("La fecha es obligatoria.")
-    if (!area.trim()) return setError("El área es obligatoria.")
-    if (!responsable.trim()) return setError("El responsable es obligatorio.")
-    if (!descripcion.trim()) return setError("La descripción es obligatoria.")
+    const cleanId = (id || "").trim();
+    if (!cleanId) return setError("El ID es obligatorio.");
+    if (existingIds.includes(cleanId))
+      return setError("Ese ID ya existe. Cambia el ID.");
+    if (!fecha) return setError("La fecha es obligatoria.");
+    if (!area.trim()) return setError("El área es obligatoria.");
+    if (!responsable.trim()) return setError("El responsable es obligatorio.");
+    if (!descripcion.trim()) return setError("La descripción es obligatoria.");
 
-    const costoNum = costoEstimado === "" ? 0 : Number(costoEstimado)
-    if (Number.isNaN(costoNum) || costoNum < 0) return setError("Costo estimado inválido.")
+    const costoNum = costoEstimado === "" ? 0 : Number(costoEstimado);
+    if (Number.isNaN(costoNum) || costoNum < 0)
+      return setError("Costo estimado inválido.");
 
     const incident = {
       id: cleanId,
@@ -98,11 +108,11 @@ export default function IncidentModal({ open, onClose, onCreate, existingIds = [
       costoEstimado: costoNum,
       descripcion: descripcion.trim(),
       fotos: fotos.map((f) => ({ name: f.name, url: f.url })),
-    }
+    };
 
-    onCreate?.(incident) 
-    close()
-  }
+    onCreate?.(incident);
+    close();
+  };
 
   return (
     <div
@@ -110,13 +120,15 @@ export default function IncidentModal({ open, onClose, onCreate, existingIds = [
       role="dialog"
       aria-modal="true"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) close()
+        if (e.target === e.currentTarget) close();
       }}
     >
       <div className="bg-white w-full max-w-3xl rounded-lg shadow overflow-hidden">
         <div className="p-6 border-b">
           <h2 className="text-xl font-semibold">Nuevo Incidente</h2>
-          <p className="text-sm text-slate-500 mt-1">Completa los campos para registrar</p>
+          <p className="text-sm text-slate-500 mt-1">
+            Completa los campos para registrar
+          </p>
         </div>
 
         <div className="p-6 space-y-4 max-h-[75vh] overflow-auto">
@@ -135,7 +147,9 @@ export default function IncidentModal({ open, onClose, onCreate, existingIds = [
                 value={id}
                 onChange={(e) => setId(e.target.value)}
               />
-              <p className="text-xs text-slate-400 mt-1">Sugerido: {suggestedId}</p>
+              <p className="text-xs text-slate-400 mt-1">
+                Sugerido: {suggestedId}
+              </p>
             </div>
 
             <div>
@@ -214,7 +228,9 @@ export default function IncidentModal({ open, onClose, onCreate, existingIds = [
             </div>
 
             <div>
-              <label className="text-xs text-slate-600">Costo estimado (S/)</label>
+              <label className="text-xs text-slate-600">
+                Costo estimado (S/)
+              </label>
               <input
                 type="number"
                 min="0"
@@ -242,21 +258,35 @@ export default function IncidentModal({ open, onClose, onCreate, existingIds = [
           {/* Fotos */}
           <div className="rounded-lg border p-3">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-medium text-slate-800">Fotografías adjuntas</p>
+              <p className="text-sm font-medium text-slate-800">
+                Fotografías adjuntas
+              </p>
 
               <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded border text-sm hover:bg-slate-50 cursor-pointer">
                 Adjuntar fotos
-                <input type="file" accept="image/*" multiple className="hidden" onChange={onPickFiles} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={onPickFiles}
+                />
               </label>
             </div>
 
             {fotos.length === 0 ? (
-              <p className="text-sm text-slate-500 mt-2">No hay fotos adjuntas.</p>
+              <p className="text-sm text-slate-500 mt-2">
+                No hay fotos adjuntas.
+              </p>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
                 {fotos.map((f, idx) => (
                   <div key={idx} className="relative">
-                    <img src={f.url} alt={f.name} className="h-28 w-full object-cover rounded-lg border" />
+                    <img
+                      src={f.url}
+                      alt={f.name}
+                      className="h-28 w-full object-cover rounded-lg border"
+                    />
                     <button
                       type="button"
                       className="absolute top-2 right-2 text-xs bg-white/90 border rounded px-2 py-1 hover:bg-white"
@@ -265,7 +295,9 @@ export default function IncidentModal({ open, onClose, onCreate, existingIds = [
                     >
                       Quitar
                     </button>
-                    <p className="text-xs text-slate-500 mt-1 truncate">{f.name}</p>
+                    <p className="text-xs text-slate-500 mt-1 truncate">
+                      {f.name}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -278,11 +310,14 @@ export default function IncidentModal({ open, onClose, onCreate, existingIds = [
             Cancelar
           </button>
 
-          <button className="px-4 py-2 rounded bg-red-600 text-white" onClick={handleSave}>
+          <button
+            className="px-4 py-2 rounded bg-red-600 text-white"
+            onClick={handleSave}
+          >
             Registrar
           </button>
         </div>
       </div>
     </div>
-  )
+  );
 }

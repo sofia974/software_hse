@@ -59,12 +59,12 @@ function fmtDate(iso) {
   return `${d}/${m}/${y}`
 }
 
-function clamp01(v) {
-  if (v === null || v === undefined) return null
-  if (v === true) return true
-  if (v === false) return false
-  return null
-}
+// function clamp01(v) {
+//   if (v === null || v === undefined) return null
+//   if (v === true) return true
+//   if (v === false) return false
+//   return null
+// }
 
 function calcCompliance(items) {
   const answered = items.filter((x) => x.ok === true || x.ok === false)
