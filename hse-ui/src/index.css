@@ -3,6 +3,41 @@
 @tailwind utilities;
 
 /* Opcional: estilos globales tuyos */
-html, body {
+html,
+body {
   height: 100%;
+}
+/* Aplicar a todos los elementos con scroll o específicamente al nav */
+.custom-scrollbar {
+  /* Ocultar barra en Firefox */
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent !important;
+}
+
+/* Aplicar a Chrome, Edge y Safari */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px !important; /* Ancho de la barra */
+  height: 5px !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent; /* Fondo transparente */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1); /* Color muy sutil */
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Si de plano quieres que NO se vea nada de nada */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

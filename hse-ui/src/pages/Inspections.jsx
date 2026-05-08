@@ -1,372 +1,663 @@
-import { useMemo, useState } from "react"
-import Card from "../components/Card"
-
+import { useMemo, useState, useEffect } from "react";
+import Card from "../components/Card";
+import ModalCrearChecklist from "../components/ModalCrearChecklist";
+import toast from "react-hot-toast"; // Importante
 // -------------------- UI Helpers --------------------
 function StatusBadge({ status }) {
-  const base = "text-xs px-2 py-1 rounded border"
-  if (status === "Completada") return <span className={`${base} bg-green-50 text-green-700 border-green-200`}>Completada</span>
-  if (status === "En proceso") return <span className={`${base} bg-yellow-50 text-yellow-800 border-yellow-200`}>En proceso</span>
-  return <span className={`${base} bg-red-50 text-red-700 border-red-200`}>Pendiente</span>
+  const base = "text-xs px-2 py-1 rounded border";
+  if (status === "Completada")
+    return (
+      <span className={`${base} bg-green-50 text-green-700 border-green-200`}>
+        Completada
+      </span>
+    );
+  if (status === "En proceso")
+    return (
+      <span
+        className={`${base} bg-yellow-50 text-yellow-800 border-yellow-200`}
+      >
+        En proceso
+      </span>
+    );
+  return (
+    <span className={`${base} bg-red-50 text-red-700 border-red-200`}>
+      Pendiente
+    </span>
+  );
 }
 
 function ResultBadge({ ok }) {
-  const base = "text-xs px-2 py-1 rounded border"
-  if (ok === true) return <span className={`${base} bg-green-50 text-green-700 border-green-200`}>OK</span>
-  if (ok === false) return <span className={`${base} bg-red-50 text-red-700 border-red-200`}>NO</span>
-  return <span className={`${base} bg-slate-50 text-slate-700 border-slate-200`}>—</span>
+  const base = "text-xs px-2 py-1 rounded border";
+  if (ok === true)
+    return (
+      <span className={`${base} bg-green-50 text-green-700 border-green-200`}>
+        OK
+      </span>
+    );
+  if (ok === false)
+    return (
+      <span className={`${base} bg-red-50 text-red-700 border-red-200`}>
+        NO
+      </span>
+    );
+  return (
+    <span className={`${base} bg-slate-50 text-slate-700 border-slate-200`}>
+      —
+    </span>
+  );
 }
 
 function SeverityBadge({ sev }) {
-  const base = "text-xs px-2 py-1 rounded border"
-  if (sev === "Alta") return <span className={`${base} bg-red-50 text-red-700 border-red-200`}>Alta</span>
-  if (sev === "Media") return <span className={`${base} bg-yellow-50 text-yellow-800 border-yellow-200`}>Media</span>
-  return <span className={`${base} bg-slate-50 text-slate-700 border-slate-200`}>Baja</span>
+  const base = "text-xs px-2 py-1 rounded border";
+  if (sev === "Alta")
+    return (
+      <span className={`${base} bg-red-50 text-red-700 border-red-200`}>
+        Alta
+      </span>
+    );
+  if (sev === "Media")
+    return (
+      <span
+        className={`${base} bg-yellow-50 text-yellow-800 border-yellow-200`}
+      >
+        Media
+      </span>
+    );
+  return (
+    <span className={`${base} bg-slate-50 text-slate-700 border-slate-200`}>
+      Baja
+    </span>
+  );
 }
 
 function Modal({ open, onClose, title, children }) {
-  if (!open) return null
+  if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-50 backdrop-blur-sm">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
       <div className="absolute left-1/2 top-1/2 w-[95vw] max-w-4xl -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-xl border border-slate-200">
         <div className="p-4 border-b border-slate-200 flex items-center justify-between gap-2">
           <div className="font-semibold text-slate-800">{title}</div>
-          <button className="px-3 py-1.5 rounded border border-slate-200 hover:bg-slate-50 text-sm" onClick={onClose}>
+          {/* <button
+            className="px-3 py-1.5 rounded border border-slate-200 hover:bg-slate-50 text-sm"
+            onClick={onClose}
+          >
             Cerrar
-          </button>
+          </button> */}
         </div>
         <div className="p-4">{children}</div>
       </div>
     </div>
-  )
+  );
 }
 
 // -------------------- Utils --------------------
-const uid = () => Math.random().toString(16).slice(2, 10).toUpperCase()
+const _uid = () => Math.random().toString(16).slice(2, 10).toUpperCase();
 
 function todayISO() {
-  const d = new Date()
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, "0")
-  const day = String(d.getDate()).padStart(2, "0")
-  return `${y}-${m}-${day}`
-}
-
-function fmtDate(iso) {
-  if (!iso) return "—"
-  const [y, m, d] = String(iso).split("-")
-  if (!y || !m || !d) return iso
-  return `${d}/${m}/${y}`
-}
-
-// function clamp01(v) {
-//   if (v === null || v === undefined) return null
-//   if (v === true) return true
-//   if (v === false) return false
-//   return null
-// }
-
-function calcCompliance(items) {
-  const answered = items.filter((x) => x.ok === true || x.ok === false)
-  if (answered.length === 0) return null
-  const ok = answered.filter((x) => x.ok === true).length
-  return Math.round((ok / answered.length) * 100)
-}
-
-function statusFromItems(items) {
-  const answered = items.filter((x) => x.ok === true || x.ok === false).length
-  if (answered === 0) return "Pendiente"
-  if (answered < items.length) return "En proceso"
-  return "Completada"
-}
-
-// -------------------- Seed Templates --------------------
-const AREAS = ["Planta", "Almacén", "Taller", "Patio", "Oficinas"]
-const CHECKLISTS = [
-  {
-    name: "Inspección de Equipos",
-    items: ["EPP completo", "Orden y limpieza", "Extintores operativos", "Señalización visible"],
-  },
-  {
-    name: "Seguridad en Almacenaje",
-    items: ["Pasillos libres", "Apilado correcto", "Etiquetado", "Iluminación"],
-  },
-  {
-    name: "Trabajo en Caliente",
-    items: ["Permiso de trabajo", "Extintor disponible", "Área aislada", "EPP específico"],
-  },
-]
-
-function seedInspections() {
-  return [
-    {
-      id: "INSP-2101",
-      fecha: "2026-02-06",
-      area: "Planta",
-      checklist: "Inspección de Equipos",
-      status: "En proceso",
-      responsable: "Supervisor HSE",
-      evidencia: ["foto_01.jpg"],
-      items: [
-        { id: "IT-" + uid(), q: "EPP completo", ok: true, comentario: "" },
-        { id: "IT-" + uid(), q: "Orden y limpieza", ok: true, comentario: "" },
-        { id: "IT-" + uid(), q: "Extintores operativos", ok: false, comentario: "Extintor sin precinto" },
-        { id: "IT-" + uid(), q: "Señalización visible", ok: true, comentario: "" },
-      ],
-      findings: [
-        {
-          id: "FND-" + uid(),
-          titulo: "Extintor sin precinto",
-          severidad: "Media",
-          categoria: "Equipos de emergencia",
-          accionRecomendada: "Reemplazar precinto y registrar inspección del extintor",
-          estado: "Abierto",
-        },
-      ],
-    },
-    {
-      id: "INSP-2100",
-      fecha: "2026-02-05",
-      area: "Almacén",
-      checklist: "Seguridad en Almacenaje",
-      status: "Completada",
-      responsable: "Jefe de Almacén",
-      evidencia: [],
-      items: [
-        { id: "IT-" + uid(), q: "Pasillos libres", ok: true, comentario: "" },
-        { id: "IT-" + uid(), q: "Apilado correcto", ok: true, comentario: "" },
-        { id: "IT-" + uid(), q: "Etiquetado", ok: true, comentario: "" },
-        { id: "IT-" + uid(), q: "Iluminación", ok: true, comentario: "" },
-      ],
-      findings: [],
-    },
-    {
-      id: "INSP-2099",
-      fecha: "2026-02-04",
-      area: "Taller",
-      checklist: "Trabajo en Caliente",
-      status: "Pendiente",
-      responsable: "Supervisor de Taller",
-      evidencia: [],
-      items: [
-        { id: "IT-" + uid(), q: "Permiso de trabajo", ok: null, comentario: "" },
-        { id: "IT-" + uid(), q: "Extintor disponible", ok: null, comentario: "" },
-        { id: "IT-" + uid(), q: "Área aislada", ok: null, comentario: "" },
-        { id: "IT-" + uid(), q: "EPP específico", ok: null, comentario: "" },
-      ],
-      findings: [],
-    },
-  ].map((insp) => ({
-    ...insp,
-    cumplimiento: calcCompliance(insp.items),
-  }))
-}
-
-function seedActionsFrom(inspections) {
-  // Acciones CAPA nacen desde hallazgos (si quieres)
-  const actions = []
-  for (const i of inspections) {
-    for (const f of i.findings || []) {
-      actions.push({
-        id: "ACT-" + uid(),
-        origen: i.id,
-        inspection_id: i.id,
-        finding_id: f.id,
-        titulo: f.accionRecomendada || f.titulo,
-        responsable: i.responsable || "Sin asignar",
-        fecha_compromiso: "",
-        estado: "Pendiente",
-        evidencia: "",
-      })
-    }
-  }
-  return actions
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 // -------------------- Main --------------------
 export default function Inspections() {
-  const [inspections, setInspections] = useState(() => seedInspections())
-  const [actions, setActions] = useState(() => seedActionsFrom(seedInspections()))
-  const [selectedId, setSelectedId] = useState(inspections[0]?.id ?? null)
+  const [isEditing, setIsEditing] = useState(false);
 
   // Filters
-  const [q, setQ] = useState("")
-  const [area, setArea] = useState("Todas")
-  const [status, setStatus] = useState("Todos")
-  const [checklist, setChecklist] = useState("Todos")
-  const [dateFrom, setDateFrom] = useState("")
-  const [dateTo, setDateTo] = useState("")
-
-  // Create modal
-  const [createOpen, setCreateOpen] = useState(false)
-  const [newInspection, setNewInspection] = useState({
-    fecha: todayISO(),
-    area: "Planta",
-    checklist: CHECKLISTS[0].name,
-    responsable: "",
-  })
-
-  const selected = inspections.find((i) => i.id === selectedId) || null
-
-  const kpis = useMemo(() => {
-    const total = inspections.length
-    const pendientes = inspections.filter((i) => i.status === "Pendiente").length
-    const proceso = inspections.filter((i) => i.status === "En proceso").length
-    const completas = inspections.filter((i) => i.status === "Completada").length
-    const complValues = inspections.map((i) => i.cumplimiento).filter((x) => typeof x === "number")
-    const promedio = complValues.length ? Math.round(complValues.reduce((a, b) => a + b, 0) / complValues.length) : null
-    const hallazgosAbiertos = inspections.reduce((acc, i) => acc + (i.findings || []).filter((f) => f.estado !== "Cerrado").length, 0)
-    const accionesPendientes = actions.filter((a) => a.estado !== "Cerrada").length
-    return { total, pendientes, proceso, completas, promedio, hallazgosAbiertos, accionesPendientes }
-  }, [inspections, actions])
+  const [q, setQ] = useState("");
+  const [area, setArea] = useState("Todas");
+  const [status, setStatus] = useState("Todos");
+  const [filterChecklist, setFilterChecklist] = useState("Todos");
+  const [checklists, setChecklists] = useState([]);
+  const [areas, setAreas] = useState([]);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [inspections, setInspections] = useState([]);
+  const [actions, setActions] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
+  const selected = inspections.find((i) => i.id === selectedId) || null;
+  const locked = !selected || selected.status === "Completada" || !isEditing;
 
   const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase()
-    const inRange = (d) => {
-      if (!d) return false
-      if (dateFrom && d < dateFrom) return false
-      if (dateTo && d > dateTo) return false
-      return true
+    return inspections.filter((i) => {
+      const s = q.trim().toLowerCase();
+
+      const matchQ =
+        !s ||
+        String(i.id).includes(s) ||
+        (i.area || "").toLowerCase().includes(s) ||
+        (i.checklist || "").toLowerCase().includes(s) ||
+        (i.responsable || "").toLowerCase().includes(s) ||
+        (i.nombreEmpresa || "").toLowerCase().includes(s);
+
+      const matchArea = area === "Todas" || String(i.idArea) === String(area);
+      const matchStatus = status === "Todos" || i.status === status;
+      const matchChecklist =
+        filterChecklist === "Todos" || i.checklist === filterChecklist;
+
+      const fechaISO = i.fecha ? String(i.fecha).slice(0, 10) : "";
+      const matchFrom = !dateFrom || fechaISO >= dateFrom;
+      const matchTo = !dateTo || fechaISO <= dateTo;
+
+      return (
+        matchQ &&
+        matchArea &&
+        matchStatus &&
+        matchChecklist &&
+        matchFrom &&
+        matchTo
+      );
+    });
+  }, [inspections, q, area, status, filterChecklist, dateFrom, dateTo]);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function fetchInspections() {
+      // 1. Extraer el token
+      const token =
+        localStorage.getItem("token") || sessionStorage.getItem("token");
+
+      if (!token) {
+        setError("No hay sesión activa. Por favor, inicia sesión.");
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        // 2. Configurar la petición con Authorization
+        const response = await fetch("http://localhost:4000/api/inspections", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) throw new Error("Sesión expirada");
+          throw new Error("Error al obtener las inspecciones");
+        }
+
+        const data = await response.json();
+
+        // 3. Validar que los datos sean un array
+        setInspections(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Error en Inspecciones:", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
     }
 
-    return inspections
-      .filter((x) => {
-        if (area !== "Todas" && x.area !== area) return false
-        if (status !== "Todos" && x.status !== status) return false
-        if (checklist !== "Todos" && x.checklist !== checklist) return false
-        if (dateFrom || dateTo) {
-          if (!inRange(x.fecha)) return false
-        }
-        if (s) {
-          const blob = `${x.id} ${x.area} ${x.checklist} ${x.responsable || ""}`.toLowerCase()
-          if (!blob.includes(s)) return false
-        }
-        return true
-      })
-      .sort((a, b) => (a.fecha < b.fecha ? 1 : -1))
-  }, [inspections, q, area, status, checklist, dateFrom, dateTo])
+    fetchInspections();
+  }, []);
+  useEffect(() => {
+    if (!selectedId) return;
+    setIsEditing(false);
 
-  const openCreate = () => {
-    setNewInspection({ fecha: todayISO(), area: "Planta", checklist: CHECKLISTS[0].name, responsable: "" })
-    setCreateOpen(true)
-  }
+    const token =
+      localStorage.getItem("token") || sessionStorage.getItem("token");
 
-  const createInspection = () => {
-    const id = `INSP-${Math.floor(1000 + Math.random() * 9000)}`
-    const template = CHECKLISTS.find((c) => c.name === newInspection.checklist) || CHECKLISTS[0]
-
-    const items = template.items.map((q) => ({ id: "IT-" + uid(), q, ok: null, comentario: "" }))
-    const status = statusFromItems(items)
-    const cumplimiento = calcCompliance(items)
-
-    const row = {
-      id,
-      fecha: newInspection.fecha || todayISO(),
-      area: newInspection.area,
-      checklist: newInspection.checklist,
-      responsable: newInspection.responsable.trim() || "Sin asignar",
-      status,
-      cumplimiento,
-      items,
-      findings: [],
-      evidencia: [],
-    }
-
-    setInspections((prev) => [row, ...prev])
-    setSelectedId(id)
-    setCreateOpen(false)
-  }
-
-  const updateItem = (inspectionId, itemId, patch) => {
-    setInspections((prev) =>
-      prev.map((ins) => {
-        if (ins.id !== inspectionId) return ins
-        const items = ins.items.map((it) => (it.id === itemId ? { ...it, ...patch } : it))
-        const nextStatus = statusFromItems(items)
-        const cumplimiento = calcCompliance(items)
-        return { ...ins, items, status: nextStatus, cumplimiento }
-      })
-    )
-  }
-
-  const addFindingFromItem = (inspectionId, item) => {
-    // solo si está NO
-    if (item.ok !== false) return
-    setInspections((prev) =>
-      prev.map((ins) => {
-        if (ins.id !== inspectionId) return ins
-        const f = {
-          id: "FND-" + uid(),
-          titulo: item.q,
-          severidad: "Media",
-          categoria: "Checklist",
-          accionRecomendada: "Definir acción correctiva y evidencia",
-          estado: "Abierto",
-        }
-        return { ...ins, findings: [f, ...(ins.findings || [])] }
-      })
-    )
-  }
-
-  const updateFinding = (inspectionId, findingId, patch) => {
-    setInspections((prev) =>
-      prev.map((ins) => {
-        if (ins.id !== inspectionId) return ins
-        const findings = (ins.findings || []).map((f) => (f.id === findingId ? { ...f, ...patch } : f))
-        return { ...ins, findings }
-      })
-    )
-  }
-
-  const createActionFromFinding = (inspectionId, finding) => {
-    const ins = inspections.find((x) => x.id === inspectionId)
-    setActions((prev) => [
-      {
-        id: "ACT-" + uid(),
-        origen: inspectionId,
-        inspection_id: inspectionId,
-        finding_id: finding.id,
-        titulo: finding.accionRecomendada || finding.titulo,
-        responsable: ins?.responsable || "Sin asignar",
-        fecha_compromiso: "",
-        estado: "Pendiente",
-        evidencia: "",
+    fetch(`http://localhost:4000/api/inspections/${selectedId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
       },
-      ...prev,
-    ])
-  }
-
-  const toggleCloseInspection = (inspectionId) => {
-    setInspections((prev) =>
-      prev.map((ins) => {
-        if (ins.id !== inspectionId) return ins
-        if (ins.status === "Completada") {
-          // “reabrir” => en proceso si hay respuestas; si no, pendiente
-          const nextStatus = statusFromItems(ins.items)
-          return { ...ins, status: nextStatus === "Completada" ? "En proceso" : nextStatus }
-        }
-        return { ...ins, status: "Completada", cumplimiento: calcCompliance(ins.items) }
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("No autorizado o error de servidor");
+        return res.json();
       })
-    )
-  }
+      .then((data) => {
+        // Validamos que data y data.selected existan para evitar el TypeError
+        if (data && data.selected) {
+          setInspections((prev) =>
+            prev.map((i) =>
+              i.id === data.selected.id ? { ...i, ...data.selected } : i,
+            ),
+          );
+          // Si tu API también devuelve las acciones aquí, las seteamos
+          if (data.actions) setActions(data.actions);
+        }
+      })
+      .catch((err) => console.error("Error fetching inspection:", err));
+  }, [selectedId]);
 
-  const toggleActionDone = (actionId) => {
-    setActions((prev) =>
-      prev.map((a) => (a.id === actionId ? { ...a, estado: a.estado === "Cerrada" ? "En proceso" : "Cerrada" } : a))
-    )
-  }
+  const updateItem = async (inspectionId, itemId, changes) => {
+    // 1. Obtener token
+    const token =
+      localStorage.getItem("token") || sessionStorage.getItem("token");
 
+    // Buscar el item actual
+    const item = selected.items.find((i) => i.id === itemId);
+    if (!item) return;
+
+    // Mantener valores actuales
+    const payload = {
+      ok: item.ok,
+      comentario: item.comentario,
+      ...changes,
+    };
+
+    try {
+      // 2. PUT con Token
+      const resPut = await fetch(
+        `http://localhost:4000/api/inspections/${inspectionId}/items/${itemId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`, // Agregado
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      if (!resPut.ok) throw new Error("Error al actualizar el item");
+
+      // 3. GET con Token para recargar
+      const resGet = await fetch(
+        `http://localhost:4000/api/inspections/${inspectionId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`, // Agregado
+          },
+        },
+      );
+
+      if (!resGet.ok) throw new Error("Error al obtener la inspección");
+
+      const data = await resGet.json();
+
+      // 4. Validación de seguridad (El error de 'id' venía de aquí)
+      // Asumimos que el backend devuelve la inspección en data o data.selected
+      const inspeccionActualizada = data.selected || data;
+
+      if (inspeccionActualizada && inspeccionActualizada.id) {
+        setInspections((prev) =>
+          prev.map((i) =>
+            i.id === inspeccionActualizada.id ? inspeccionActualizada : i,
+          ),
+        );
+
+        // Si usas un estado para la inspección seleccionada actualmente, actualízalo también
+        // setSelected(inspeccionActualizada);
+      }
+
+      if (data.actions) setActions(data.actions);
+    } catch (err) {
+      console.error("Error en updateItem:", err);
+      alert("No se pudo actualizar: " + err.message);
+    }
+  };
+  const addFindingFromItem = async (inspectionId, item) => {
+    const token =
+      localStorage.getItem("token") || sessionStorage.getItem("token");
+    const payload = {
+      titulo: item.q,
+      severidad: "Media",
+      categoria: "Checklist",
+      accionRecomendada: item.comentario || "",
+    };
+    await fetch(
+      `http://localhost:4000/api/inspections/${inspectionId}/items/${item.id}/findings`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // Agregado
+        },
+        body: JSON.stringify(payload),
+      },
+    );
+    const res = await fetch(
+      `http://localhost:4000/api/inspections/${inspectionId}`,
+      {
+        headers: { Authorization: `Bearer ${token}` }, // Agregado
+      },
+    );
+    const data = await res.json();
+
+    if (data && data.selected) {
+      // Validación mínima para evitar el error de 'id'
+      setInspections((prev) =>
+        prev.map((i) => (i.id === data.selected.id ? data.selected : i)),
+      );
+    }
+    if (data && data.actions) setActions(data.actions);
+    toast.success("¡Hallazgo creado correctamente!");
+  };
+  const updateFinding = async (inspectionId, findingId, payload) => {
+    // 1. Obtener el token
+    const token =
+      localStorage.getItem("token") || sessionStorage.getItem("token");
+
+    const f = selected.findings.find((x) => x.id === findingId);
+
+    const body = {
+      severidad: payload.severidad ?? f.severidad,
+      accionRecomendada: payload.accionRecomendada ?? f.accionRecomendada,
+      estado: payload.estado ?? f.estado,
+    };
+
+    // 2. PUT con Authorization
+    await fetch(`http://localhost:4000/api/findings/${findingId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`, // Agregado
+      },
+      body: JSON.stringify(body),
+    });
+
+    // 3. GET con Authorization
+    const res = await fetch(
+      `http://localhost:4000/api/inspections/${inspectionId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`, // Agregado
+        },
+      },
+    );
+
+    const data = await res.json();
+
+    // 4. Validación para evitar el error de 'id' si la respuesta no es la esperada
+    if (data && data.selected) {
+      setInspections((prev) =>
+        prev.map((i) =>
+          i.id === data.selected.id ? { ...i, ...data.selected } : i,
+        ),
+      );
+    }
+
+    if (data && data.actions) setActions(data.actions);
+  };
+
+  const createActionFromFinding = async (inspectionId, finding) => {
+    const token =
+      localStorage.getItem("token") || sessionStorage.getItem("token");
+
+    await fetch(`http://localhost:4000/api/findings/${finding.id}/actions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`, // Agregado
+      },
+      body: JSON.stringify({
+        titulo: finding.accionRecomendada || finding.titulo,
+        responsable: selected.responsable,
+      }),
+    });
+
+    const res = await fetch(
+      `http://localhost:4000/api/inspections/${inspectionId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`, // Agregado
+        },
+      },
+    );
+
+    const data = await res.json();
+
+    // Cambiamos setActions(data.actions) por esto para evitar el error del .map
+    if (data && data.actions) {
+      setActions(data.actions);
+      toast.success("¡Acción creada correctamente!");
+    } else {
+      setActions([]); // Si falla, inicializamos como array vacío
+      toast.error("Hubo un error al intentar crear la acción.");
+    }
+  };
+
+  const toggleActionDone = async (id) => {
+    // 1. Obtener el token
+    const token =
+      localStorage.getItem("token") || sessionStorage.getItem("token");
+
+    const action = actions.find((a) => a.id === id);
+    if (!action) return;
+
+    const newState = action.estado === "Cerrada" ? "Pendiente" : "Cerrada";
+
+    // 2. Agregar Authorization header
+    await fetch(`http://localhost:4000/api/actions/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`, // Agregado
+      },
+      body: JSON.stringify({
+        estado: newState,
+      }),
+    });
+
+    // 3. Actualizar el estado localmente
+    setActions(
+      actions.map((a) => (a.id === id ? { ...a, estado: newState } : a)),
+    );
+  };
+
+  useEffect(() => {
+    if (!selectedId) return;
+
+    const token =
+      localStorage.getItem("token") || sessionStorage.getItem("token");
+
+    fetch(`http://localhost:4000/api/inspections/${selectedId}/actions`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("No autorizado");
+        return res.json();
+      })
+      .then((data) => {
+        // Nos aseguramos de que data sea un array antes de setearlo
+        setActions(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => console.error("Error fetching actions:", err));
+  }, [selectedId]);
+  // Create modal
+  const [createOpen, setCreateOpen] = useState(false);
+  const [checklistModalOpen, setChecklistModalOpen] = useState(false);
+  const [newInspection, setNewInspection] = useState({
+    fecha: "",
+    idArea: "",
+    idChecklist: "",
+    responsable: "",
+  });
+  // Efecto para Áreas
+  useEffect(() => {
+    const token =
+      localStorage.getItem("token") || sessionStorage.getItem("token");
+
+    fetch("http://localhost:4000/api/areas", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Error en el servidor");
+        return res.json();
+      })
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setAreas(data);
+          // Solo intenta setear el default si hay datos
+          if (data.length > 0) {
+            setNewInspection((prev) => ({ ...prev, idArea: data[0].idArea }));
+          }
+        }
+      })
+      .catch((err) => {
+        console.error("Error cargando áreas:", err);
+        setAreas([]); // Evita que .map() falle
+      });
+  }, []);
+
+  // Efecto para Checklists
+  useEffect(() => {
+    const token =
+      localStorage.getItem("token") || sessionStorage.getItem("token");
+    fetch("http://localhost:4000/api/checklists", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => setChecklists(Array.isArray(data) ? data : []))
+      .catch(() => setChecklists([]));
+  }, []);
+  const kpis = useMemo(() => {
+    const total = inspections.length;
+    const pendientes = inspections.filter(
+      (i) => i.status === "Pendiente",
+    ).length;
+    const proceso = inspections.filter((i) => i.status === "En proceso").length;
+    const completas = inspections.filter(
+      (i) => i.status === "Completada",
+    ).length;
+    const complValues = inspections
+      .map((i) => i.cumplimiento)
+      .filter((x) => typeof x === "number");
+    const promedio = complValues.length
+      ? Math.round(complValues.reduce((a, b) => a + b, 0) / complValues.length)
+      : null;
+    const hallazgosAbiertos = inspections.reduce(
+      (acc, i) =>
+        acc + (i.findings || []).filter((f) => f.estado !== "Cerrado").length,
+      0,
+    );
+    const accionesPendientes = inspections.reduce(
+      (acc, i) =>
+        acc + (i.actions || []).filter((a) => a.estado !== "Cerrada").length,
+      0,
+    );
+    return {
+      total,
+      pendientes,
+      proceso,
+      completas,
+      promedio,
+      hallazgosAbiertos,
+      accionesPendientes,
+    };
+  }, [inspections]);
+  const openCreate = () => {
+    setNewInspection({
+      fecha: todayISO(),
+      idArea: "",
+      idChecklist: "",
+      responsable: "",
+    });
+
+    setCreateOpen(true);
+  };
+  const createInspection = async () => {
+    try {
+      // Obtener el token
+      const token =
+        localStorage.getItem("token") || sessionStorage.getItem("token");
+
+      const res = await fetch("http://localhost:4000/api/inspections", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // Agregado
+        },
+        body: JSON.stringify(newInspection),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setCreateOpen(false);
+        // Volver a cargar con token
+        const res = await fetch("http://localhost:4000/api/inspections", {
+          headers: {
+            Authorization: `Bearer ${token}`, // Agregado
+          },
+        });
+        const data2 = await res.json();
+        setInspections(data2);
+        toast.success("¡Inspección creada correctamente!");
+      }
+    } catch (error) {
+      // console.error(error);
+      toast.error("Hubo un error al intentar guardar la Inspeccion.", error);
+    }
+  };
+
+  const toggleCloseInspection = async (inspectionId) => {
+    // 1. Obtener el token
+    const token =
+      localStorage.getItem("token") || sessionStorage.getItem("token");
+
+    const inspection = inspections.find((i) => i.id === inspectionId);
+    if (!inspection) return;
+
+    const newStatus =
+      inspection.status === "Completada" ? "En proceso" : "Completada";
+
+    // 2. PUT con Authorization
+    await fetch(
+      `http://localhost:4000/api/inspections/${inspectionId}/status`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // Agregado
+        },
+        body: JSON.stringify({
+          estado: newStatus,
+        }),
+      },
+    );
+
+    // 3. Volver a cargar la inspección con Authorization
+    const res = await fetch(
+      `http://localhost:4000/api/inspections/${inspectionId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`, // Agregado
+        },
+      },
+    );
+    const data = await res.json();
+    // 4. Validación para evitar el error de 'id' (Cannot read properties of undefined)
+    if (data && data.selected) {
+      setInspections((prev) =>
+        prev.map((i) => (i.id === data.selected.id ? data.selected : i)),
+      );
+      if (data.actions) setActions(data.actions);
+    }
+    // Si se reabrió, activar edición automáticamente
+    if (newStatus !== "Completada") setIsEditing(true);
+    else setIsEditing(false);
+  };
   // -------------------- UI --------------------
   return (
     <main className="p-6 space-y-4">
       {/* Header */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-800">Inspecciones</h1>
-          <p className="text-sm text-slate-500">Checklists, hallazgos y acciones (CAPA) en una sola vista.</p>
+          <h1 className="text-2xl font-semibold text-slate-800">
+            Inspecciones
+          </h1>
+          <p className="text-sm text-slate-500">
+            Checklists, hallazgos y acciones (CAPA) en una sola vista.
+          </p>
         </div>
 
-        <button className="px-4 py-2 bg-slate-900 text-white rounded hover:bg-slate-700" onClick={openCreate}>
+        <button
+          className="px-4 py-2 bg-slate-900 text-white rounded hover:bg-slate-700"
+          onClick={openCreate}
+        >
           + Nueva inspección
         </button>
       </div>
@@ -375,13 +666,19 @@ export default function Inspections() {
       <div className="grid grid-cols-12 gap-4">
         <div className="col-span-12 md:col-span-3">
           <Card title="Total">
-            <div className="text-3xl font-semibold text-slate-900">{kpis.total}</div>
-            <div className="text-xs text-slate-500 mt-1">Inspecciones registradas</div>
+            <div className="text-3xl font-semibold text-slate-900">
+              {kpis.total}
+            </div>
+            <div className="text-xs text-slate-500 mt-1">
+              Inspecciones registradas
+            </div>
           </Card>
         </div>
         <div className="col-span-12 md:col-span-3">
           <Card title="Pendientes / En proceso">
-            <div className="text-3xl font-semibold text-slate-900">{kpis.pendientes + kpis.proceso}</div>
+            <div className="text-3xl font-semibold text-slate-900">
+              {kpis.pendientes + kpis.proceso}
+            </div>
             <div className="text-xs text-slate-500 mt-1">
               Pendientes: {kpis.pendientes} • En proceso: {kpis.proceso}
             </div>
@@ -389,14 +686,22 @@ export default function Inspections() {
         </div>
         <div className="col-span-12 md:col-span-3">
           <Card title="Promedio % Cumpl.">
-            <div className="text-3xl font-semibold text-slate-900">{kpis.promedio === null ? "—" : `${kpis.promedio}%`}</div>
-            <div className="text-xs text-slate-500 mt-1">Solo inspecciones con respuestas</div>
+            <div className="text-3xl font-semibold text-slate-900">
+              {kpis.promedio === null ? "—" : `${kpis.promedio}%`}
+            </div>
+            <div className="text-xs text-slate-500 mt-1">
+              Solo inspecciones con respuestas
+            </div>
           </Card>
         </div>
         <div className="col-span-12 md:col-span-3">
           <Card title="Hallazgos / Acciones abiertas">
-            <div className="text-3xl font-semibold text-slate-900">{kpis.hallazgosAbiertos}</div>
-            <div className="text-xs text-slate-500 mt-1">Acciones no cerradas: {kpis.accionesPendientes}</div>
+            <div className="text-3xl font-semibold text-slate-900">
+              {kpis.hallazgosAbiertos}
+            </div>
+            <div className="text-xs text-slate-500 mt-1">
+              Acciones no cerradas: {kpis.accionesPendientes}
+            </div>
           </Card>
         </div>
       </div>
@@ -416,11 +721,15 @@ export default function Inspections() {
 
           <div className="col-span-12 md:col-span-2">
             <div className="text-xs text-slate-500 mb-1">Área</div>
-            <select className="w-full border border-slate-200 rounded px-3 py-2 text-sm" value={area} onChange={(e) => setArea(e.target.value)}>
+            <select
+              className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
+              value={area}
+              onChange={(e) => setArea(e.target.value)}
+            >
               <option value="Todas">Todas</option>
-              {AREAS.map((a) => (
-                <option key={a} value={a}>
-                  {a}
+              {areas.map((x) => (
+                <option key={x.idArea} value={x.idArea}>
+                  {x.Nombre}
                 </option>
               ))}
             </select>
@@ -428,7 +737,11 @@ export default function Inspections() {
 
           <div className="col-span-12 md:col-span-2">
             <div className="text-xs text-slate-500 mb-1">Estado</div>
-            <select className="w-full border border-slate-200 rounded px-3 py-2 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
+            <select
+              className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
               <option value="Todos">Todos</option>
               <option value="Pendiente">Pendiente</option>
               <option value="En proceso">En proceso</option>
@@ -440,13 +753,13 @@ export default function Inspections() {
             <div className="text-xs text-slate-500 mb-1">Checklist</div>
             <select
               className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
-              value={checklist}
-              onChange={(e) => setChecklist(e.target.value)}
+              value={filterChecklist}
+              onChange={(e) => setFilterChecklist(e.target.value)}
             >
               <option value="Todos">Todos</option>
-              {CHECKLISTS.map((c) => (
-                <option key={c.name} value={c.name}>
-                  {c.name}
+              {checklists.map((c) => (
+                <option key={c.id} value={c.nombre}>
+                  {c.nombre}
                 </option>
               ))}
             </select>
@@ -454,12 +767,22 @@ export default function Inspections() {
 
           <div className="col-span-6 md:col-span-1">
             <div className="text-xs text-slate-500 mb-1">Desde</div>
-            <input type="date" className="w-full border border-slate-200 rounded px-3 py-2 text-sm" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+            <input
+              type="date"
+              className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
           </div>
 
           <div className="col-span-6 md:col-span-1">
             <div className="text-xs text-slate-500 mb-1">Hasta</div>
-            <input type="date" className="w-full border border-slate-200 rounded px-3 py-2 text-sm" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            <input
+              type="date"
+              className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
           </div>
         </div>
       </Card>
@@ -473,6 +796,7 @@ export default function Inspections() {
                 <thead>
                   <tr className="text-left text-slate-600 border-b">
                     <th className="py-2 pr-3">ID</th>
+                    <th className="py-2 pr-3">Empresa</th>
                     <th className="py-2 pr-3">Fecha</th>
                     <th className="py-2 pr-3">Área</th>
                     <th className="py-2 pr-3">Checklist</th>
@@ -484,34 +808,57 @@ export default function Inspections() {
                 </thead>
                 <tbody className="text-slate-700">
                   {filtered.map((x) => {
-                    const isActive = x.id === selectedId
-                    const openFindings = (x.findings || []).filter((f) => f.estado !== "Cerrado").length
+                    const isActive = x.id === selectedId;
+                    const openFindings = x.openFindings || 0;
                     return (
-                      <tr key={x.id} className={`border-b last:border-b-0 ${isActive ? "bg-slate-50" : ""}`}>
-                        <td className="py-2 pr-3 font-semibold">{x.id}</td>
-                        <td className="py-2 pr-3">{fmtDate(x.fecha)}</td>
+                      <tr
+                        key={x.id}
+                        className={`border-b last:border-b-0 cursor-pointer ${isActive ? "bg-slate-50" : ""}`}
+                        onClick={() => setSelectedId(x.id)}
+                      >
+                        <td className="py-2 pr-3 font-semibold">{`INSP-${x.id}`}</td>
+                        <td className="py-2 pr-3 text-xs font-medium text-slate-500 uppercase">
+                          {x.nombreEmpresa || "N/A"}
+                        </td>
+                        <td className="py-2 pr-3">
+                          {new Date(x.fecha).toLocaleDateString("es-PE", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })}
+                        </td>
                         <td className="py-2 pr-3">{x.area}</td>
                         <td className="py-2 pr-3">{x.checklist}</td>
                         <td className="py-2 pr-3">
                           <StatusBadge status={x.status} />
                         </td>
-                        <td className="py-2 pr-3">{x.cumplimiento === null ? "—" : `${x.cumplimiento}%`}</td>
                         <td className="py-2 pr-3">
-                          <span className={`text-xs ${openFindings > 0 ? "text-red-700 font-semibold" : "text-slate-600"}`}>
+                          {x.cumplimiento === null ? "—" : `${x.cumplimiento}%`}
+                        </td>
+                        <td className="py-2 pr-3">
+                          <span
+                            className={`text-xs ${openFindings > 0 ? "text-red-700 font-semibold" : "text-slate-600"}`}
+                          >
                             {openFindings}
                           </span>
                         </td>
                         <td className="py-2">
-                          <button className="text-sm underline" onClick={() => setSelectedId(x.id)}>
+                          <button
+                            className="text-sm underline"
+                            onClick={() => setSelectedId(x.id)}
+                          >
                             Ver detalle
                           </button>
                         </td>
                       </tr>
-                    )
+                    );
                   })}
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="py-6 text-center text-slate-500">
+                      <td
+                        colSpan={9}
+                        className="py-6 text-center text-slate-500"
+                      >
                         No hay resultados.
                       </td>
                     </tr>
@@ -526,18 +873,31 @@ export default function Inspections() {
         <div className="col-span-12 lg:col-span-5">
           <Card title="Detalle">
             {!selected ? (
-              <div className="text-sm text-slate-500">Selecciona una inspección para ver el detalle.</div>
+              <div className="text-sm text-slate-500">
+                Selecciona una inspección para ver el detalle.
+              </div>
             ) : (
               <div className="space-y-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="text-sm text-slate-500">{selected.id}</div>
-                    <div className="font-semibold text-slate-800">{selected.checklist}</div>
-                    <div className="text-sm text-slate-600">
-                      {selected.area} • {fmtDate(selected.fecha)}
+                    <div className="text-sm text-slate-500">{`INSP-${selected.id}`}</div>
+                    <div className="font-semibold text-slate-800">
+                      {selected.checklist}
                     </div>
+                    <div className="text-sm text-slate-600">
+                      {selected.area} •{" "}
+                      {new Date(selected.fecha).toLocaleDateString("es-PE", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      })}
+                    </div>
+
                     <div className="text-xs text-slate-500 mt-1">
-                      Responsable: <span className="text-slate-700 font-semibold">{selected.responsable || "—"}</span>
+                      Responsable:{" "}
+                      <span className="text-slate-700 font-semibold">
+                        {selected.responsable || "—"}
+                      </span>
                     </div>
                   </div>
                   <StatusBadge status={selected.status} />
@@ -545,50 +905,89 @@ export default function Inspections() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-3 rounded border border-slate-200 bg-white">
-                    <div className="text-xs text-slate-500 mb-1">% Cumplimiento</div>
-                    <div className="text-2xl font-semibold text-slate-900">
-                      {selected.cumplimiento === null ? "—" : `${selected.cumplimiento}%`}
+                    <div className="text-xs text-slate-500 mb-1">
+                      % Cumplimiento
                     </div>
-                    <div className="text-xs text-slate-500 mt-1">Auto-calculado según respuestas</div>
+                    <div className="text-2xl font-semibold text-slate-900">
+                      {selected.cumplimiento === null
+                        ? "—"
+                        : `${selected.cumplimiento}%`}
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      Auto-calculado según respuestas
+                    </div>
                   </div>
                   <div className="p-3 rounded border border-slate-200 bg-white">
-                    <div className="text-xs text-slate-500 mb-1">Hallazgos abiertos</div>
-                    <div className="text-2xl font-semibold text-slate-900">
-                      {(selected.findings || []).filter((f) => f.estado !== "Cerrado").length}
+                    <div className="text-xs text-slate-500 mb-1">
+                      Hallazgos abiertos
                     </div>
-                    <div className="text-xs text-slate-500 mt-1">Desde checklist / manual</div>
+                    <div className="text-2xl font-semibold text-slate-900">
+                      {
+                        (selected.findings || []).filter(
+                          (f) => f.estado !== "Cerrado",
+                        ).length
+                      }
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      Desde checklist / manual
+                    </div>
                   </div>
                 </div>
 
                 {/* Checklist interactive */}
                 <div>
-                  <div className="text-sm font-semibold text-slate-800 mb-2">Checklist</div>
+                  <div className="text-sm font-semibold text-slate-800 mb-2">
+                    Checklist
+                  </div>
                   <div className="space-y-2">
-                    {selected.items.map((it) => (
-                      <div key={it.id} className="border rounded p-3 bg-slate-50">
+                    {selected.items?.map((it) => (
+                      <div
+                        key={it.id}
+                        className="border rounded p-3 bg-slate-50"
+                      >
                         <div className="flex items-start justify-between gap-3">
-                          <div className="text-sm text-slate-800 font-medium">{it.q}</div>
+                          <div className="text-sm text-slate-800 font-medium">
+                            {it.q}
+                          </div>
                           <div className="flex items-center gap-2">
                             <button
+                              disabled={locked}
                               className={`text-xs px-2 py-1 rounded border ${
-                                it.ok === true ? "bg-green-50 text-green-700 border-green-200" : "bg-white hover:bg-slate-100 border-slate-200 text-slate-700"
+                                locked
+                                  ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                                  : it.ok === true
+                                    ? "bg-green-50 text-green-700 border-green-200"
+                                    : "bg-white hover:bg-slate-100 border-slate-200 text-slate-700"
                               }`}
-                              onClick={() => updateItem(selected.id, it.id, { ok: true })}
+                              onClick={() =>
+                                updateItem(selected.id, it.id, { ok: true })
+                              }
                             >
                               OK
                             </button>
+
                             <button
+                              disabled={locked}
                               className={`text-xs px-2 py-1 rounded border ${
-                                it.ok === false ? "bg-red-50 text-red-700 border-red-200" : "bg-white hover:bg-slate-100 border-slate-200 text-slate-700"
+                                locked
+                                  ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                                  : it.ok === false
+                                    ? "bg-red-50 text-red-700 border-red-200"
+                                    : "bg-white hover:bg-slate-100 border-slate-200 text-slate-700"
                               }`}
-                              onClick={() => updateItem(selected.id, it.id, { ok: false })}
+                              onClick={() =>
+                                updateItem(selected.id, it.id, { ok: false })
+                              }
                             >
                               NO
                             </button>
+
                             <button
+                              disabled={locked}
                               className="text-xs px-2 py-1 rounded border bg-white hover:bg-slate-100 border-slate-200 text-slate-700"
-                              onClick={() => updateItem(selected.id, it.id, { ok: null })}
-                              title="Limpiar respuesta"
+                              onClick={() =>
+                                updateItem(selected.id, it.id, { ok: null })
+                              }
                             >
                               —
                             </button>
@@ -601,24 +1000,37 @@ export default function Inspections() {
                           </div>
 
                           <button
+                            disabled={locked || it.ok !== false}
                             className={`text-xs px-2 py-1 rounded border ${
-                              it.ok === false ? "bg-white hover:bg-slate-100 border-slate-200 text-slate-700" : "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                              locked || it.ok !== false
+                                ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                                : "bg-white hover:bg-slate-100 border-slate-200 text-slate-700"
                             }`}
-                            disabled={it.ok !== false}
                             onClick={() => addFindingFromItem(selected.id, it)}
-                            title={it.ok !== false ? "Solo disponible si marcaste NO" : "Crear hallazgo desde este ítem"}
                           >
                             + Hallazgo
                           </button>
                         </div>
 
                         <div className="mt-2">
-                          <div className="text-xs text-slate-500 mb-1">Comentario</div>
+                          <div className="text-xs text-slate-500 mb-1">
+                            Comentario
+                          </div>
+
                           <input
-                            className="w-full border border-slate-200 rounded px-3 py-2 text-sm bg-white"
-                            placeholder="Detalle del hallazgo / evidencia observada..."
-                            value={it.comentario || ""}
-                            onChange={(e) => updateItem(selected.id, it.id, { comentario: e.target.value })}
+                            disabled={locked}
+                            className={`w-full border rounded px-3 py-2 text-sm ${
+                              locked
+                                ? "bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed"
+                                : "bg-white border-slate-200"
+                            }`}
+                            placeholder="Detalle del hallazgo..."
+                            defaultValue={it.comentario || ""}
+                            onBlur={(e) =>
+                              updateItem(selected.id, it.id, {
+                                comentario: e.target.value,
+                              })
+                            }
                           />
                         </div>
                       </div>
@@ -626,36 +1038,66 @@ export default function Inspections() {
                   </div>
                 </div>
 
-                {/* Findings */}
+                {/* Hallazgos */}
                 <div>
-                  <div className="text-sm font-semibold text-slate-800 mb-2">Hallazgos</div>
+                  <div className="text-sm font-semibold text-slate-800 mb-2">
+                    Hallazgos
+                  </div>
                   {(selected.findings || []).length === 0 ? (
-                    <div className="text-sm text-slate-600">No hay hallazgos registrados.</div>
+                    <div className="text-sm text-slate-600">
+                      No hay hallazgos registrados.
+                    </div>
                   ) : (
                     <div className="space-y-2">
                       {selected.findings.map((f) => (
-                        <div key={f.id} className="p-3 rounded border border-slate-200 bg-white">
+                        <div
+                          key={f.id}
+                          className="p-3 rounded border border-slate-200 bg-white"
+                        >
                           <div className="flex items-start justify-between gap-2">
                             <div>
-                              <div className="text-sm font-semibold text-slate-800">{f.titulo}</div>
+                              <div className="text-sm font-semibold text-slate-800">
+                                {f.titulo}
+                              </div>
                               <div className="text-xs text-slate-500 mt-1">
-                                Categoría: <span className="text-slate-700 font-semibold">{f.categoria || "—"}</span>
+                                Categoría:{" "}
+                                <span className="text-slate-700 font-semibold">
+                                  {f.categoria || "—"}
+                                </span>
                               </div>
                             </div>
 
                             <div className="flex items-center gap-2">
                               <SeverityBadge sev={f.severidad} />
-                              <StatusBadge status={f.estado === "Cerrado" ? "Completada" : "En proceso"} />
+                              <StatusBadge
+                                status={
+                                  f.estado === "Cerrado"
+                                    ? "Completada"
+                                    : "En proceso"
+                                }
+                              />
                             </div>
                           </div>
 
                           <div className="grid grid-cols-12 gap-2 mt-3">
                             <div className="col-span-12 md:col-span-4">
-                              <div className="text-xs text-slate-500 mb-1">Severidad</div>
+                              <div className="text-xs text-slate-500 mb-1">
+                                Severidad
+                              </div>
+
                               <select
-                                className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
+                                disabled={locked}
+                                className={`w-full border border-slate-200 rounded px-3 py-2 text-sm ${
+                                  locked
+                                    ? "bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed"
+                                    : "bg-white border-slate-200"
+                                }`}
                                 value={f.severidad}
-                                onChange={(e) => updateFinding(selected.id, f.id, { severidad: e.target.value })}
+                                onChange={(e) =>
+                                  updateFinding(selected.id, f.id, {
+                                    severidad: e.target.value,
+                                  })
+                                }
                               >
                                 <option value="Baja">Baja</option>
                                 <option value="Media">Media</option>
@@ -664,25 +1106,53 @@ export default function Inspections() {
                             </div>
 
                             <div className="col-span-12 md:col-span-8">
-                              <div className="text-xs text-slate-500 mb-1">Acción recomendada</div>
+                              <div className="text-xs text-slate-500 mb-1">
+                                Acción recomendada
+                              </div>
+
                               <input
+                                disabled={locked}
                                 className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
                                 value={f.accionRecomendada || ""}
-                                onChange={(e) => updateFinding(selected.id, f.id, { accionRecomendada: e.target.value })}
+                                onChange={(e) =>
+                                  updateFinding(selected.id, f.id, {
+                                    accionRecomendada: e.target.value,
+                                  })
+                                }
                               />
                             </div>
 
                             <div className="col-span-12 flex items-center justify-between mt-1">
                               <button
-                                className="text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200"
-                                onClick={() => createActionFromFinding(selected.id, f)}
+                                disabled={locked}
+                                className={`text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200 ${
+                                  locked
+                                    ? "bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed"
+                                    : "bg-white border-slate-200"
+                                }`}
+                                onClick={() =>
+                                  createActionFromFinding(selected.id, f)
+                                }
                               >
                                 Crear acción CAPA
                               </button>
 
                               <button
-                                className="text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200"
-                                onClick={() => updateFinding(selected.id, f.id, { estado: f.estado === "Cerrado" ? "Abierto" : "Cerrado" })}
+                                disabled={locked}
+                                // className="text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200"
+                                className={`text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200 ${
+                                  locked
+                                    ? "bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed"
+                                    : "bg-white border-slate-200"
+                                }`}
+                                onClick={() =>
+                                  updateFinding(selected.id, f.id, {
+                                    estado:
+                                      f.estado === "Cerrado"
+                                        ? "Abierto"
+                                        : "Cerrado",
+                                  })
+                                }
                               >
                                 {f.estado === "Cerrado" ? "Reabrir" : "Cerrar"}
                               </button>
@@ -696,7 +1166,9 @@ export default function Inspections() {
 
                 {/* Actions for this inspection */}
                 <div>
-                  <div className="text-sm font-semibold text-slate-800 mb-2">Acciones (CAPA)</div>
+                  <div className="text-sm font-semibold text-slate-800 mb-2">
+                    Acciones (CAPA)
+                  </div>
                   <div className="overflow-auto">
                     <table className="w-full text-sm">
                       <thead>
@@ -708,18 +1180,33 @@ export default function Inspections() {
                           <th className="py-2">Acción</th>
                         </tr>
                       </thead>
+
                       <tbody className="text-slate-700">
-                        {actions.filter((a) => a.inspection_id === selected.id).map((a) => (
+                        {actions.map((a) => (
                           <tr key={a.id} className="border-b last:border-b-0">
-                            <td className="py-2 pr-3 font-semibold">{a.id}</td>
+                            <td className="py-2 pr-3 font-semibold">{`ACT-${a.id}`}</td>
                             <td className="py-2 pr-3">{a.titulo}</td>
                             <td className="py-2 pr-3">{a.responsable}</td>
                             <td className="py-2 pr-3">
-                              <StatusBadge status={a.estado === "Cerrada" ? "Completada" : a.estado === "En proceso" ? "En proceso" : "Pendiente"} />
+                              <StatusBadge
+                                status={
+                                  a.estado === "Cerrada"
+                                    ? "Completada"
+                                    : a.estado === "En proceso"
+                                      ? "En proceso"
+                                      : "Pendiente"
+                                }
+                              />
                             </td>
                             <td className="py-2">
                               <button
-                                className="text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200"
+                                disabled={locked}
+                                className={`text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200${
+                                  locked
+                                    ? "bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed"
+                                    : "bg-white border-slate-200"
+                                }`}
+                                // className="text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200"
                                 onClick={() => toggleActionDone(a.id)}
                               >
                                 {a.estado === "Cerrada" ? "Reabrir" : "Cerrar"}
@@ -727,9 +1214,13 @@ export default function Inspections() {
                             </td>
                           </tr>
                         ))}
-                        {actions.filter((a) => a.inspection_id === selected.id).length === 0 && (
+
+                        {actions.length === 0 && (
                           <tr>
-                            <td colSpan={5} className="py-4 text-center text-slate-500">
+                            <td
+                              colSpan={5}
+                              className="py-4 text-center text-slate-500"
+                            >
                               No hay acciones creadas para esta inspección.
                             </td>
                           </tr>
@@ -741,18 +1232,30 @@ export default function Inspections() {
 
                 {/* Footer actions */}
                 <div className="flex flex-wrap gap-2">
+                  {/* <button
+                    className="px-4 py-2 rounded border hover:bg-slate-50"
+                    onClick={() => setIsEditing((prev) => !prev)}
+                    disabled={selected.status === "Completada"}
+                  >
+                    {isEditing ? "Cancelar edición" : "Editar"}
+                  </button> */}
                   <button
                     className="px-4 py-2 rounded border hover:bg-slate-50"
-                    onClick={() => console.log("Editar meta (demo)", selected.id)}
+                    onClick={() => setIsEditing((prev) => !prev)}
                   >
-                    Editar
+                    {isEditing ? "Cancelar edición" : "Editar"}
                   </button>
-                  <button
-                    className="px-4 py-2 rounded bg-slate-900 text-white hover:bg-slate-700"
-                    onClick={() => toggleCloseInspection(selected.id)}
-                  >
-                    {selected.status === "Completada" ? "Reabrir" : "Cerrar inspección"}
-                  </button>
+
+                  {(selected.status !== "Completada" || isEditing) && (
+                    <button
+                      className="px-4 py-2 rounded bg-slate-900 text-white hover:bg-slate-700"
+                      onClick={() => toggleCloseInspection(selected.id)}
+                    >
+                      {selected.status === "Completada"
+                        ? "Reabrir inspección"
+                        : "Cerrar inspección"}
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -761,43 +1264,74 @@ export default function Inspections() {
       </div>
 
       {/* Create modal */}
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Nueva inspección">
-        <div className="grid grid-cols-12 gap-3">
+      <Modal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title="Nueva inspección"
+      >
+        <div className="grid grid-cols-12 gap-3 ">
           <div className="col-span-12 md:col-span-4">
             <div className="text-xs text-slate-500 mb-1">Fecha</div>
             <input
               type="date"
               className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
               value={newInspection.fecha}
-              onChange={(e) => setNewInspection((x) => ({ ...x, fecha: e.target.value }))}
+              onChange={(e) =>
+                setNewInspection((x) => ({ ...x, fecha: e.target.value }))
+              }
             />
           </div>
 
           <div className="col-span-12 md:col-span-4">
             <div className="text-xs text-slate-500 mb-1">Área</div>
+
             <select
               className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
-              value={newInspection.area}
-              onChange={(e) => setNewInspection((x) => ({ ...x, area: e.target.value }))}
+              value={newInspection.idArea || ""}
+              onChange={(e) =>
+                setNewInspection((x) => ({
+                  ...x,
+                  idArea: Number(e.target.value),
+                }))
+              }
             >
-              {AREAS.map((a) => (
-                <option key={a} value={a}>
-                  {a}
+              <option value="">Seleccionar área</option>
+
+              {areas.map((a) => (
+                <option key={a.idArea} value={a.idArea}>
+                  {a.Nombre}
                 </option>
               ))}
             </select>
           </div>
 
           <div className="col-span-12 md:col-span-4">
-            <div className="text-xs text-slate-500 mb-1">Checklist</div>
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-xs text-slate-500">Checklist</div>
+              {/* <button
+                type="button"
+                className="text-xs text-slate-500 underline hover:text-slate-800"
+                onClick={() => setChecklistModalOpen(true)}
+              >
+                + Crear nuevo
+              </button> */}
+            </div>
+
             <select
               className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
-              value={newInspection.checklist}
-              onChange={(e) => setNewInspection((x) => ({ ...x, checklist: e.target.value }))}
+              value={newInspection.idChecklist || ""}
+              onChange={(e) =>
+                setNewInspection((x) => ({
+                  ...x,
+                  idChecklist: Number(e.target.value),
+                }))
+              }
             >
-              {CHECKLISTS.map((c) => (
-                <option key={c.name} value={c.name}>
-                  {c.name}
+              <option value="">Seleccionar checklist</option>
+              {checklists.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {/* CAMBIO AQUÍ: Usar c.nombre o c.name según el backend */}
+                  {c.nombre || c.name}
                 </option>
               ))}
             </select>
@@ -809,20 +1343,38 @@ export default function Inspections() {
               className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
               placeholder="Ej: Supervisor HSE"
               value={newInspection.responsable}
-              onChange={(e) => setNewInspection((x) => ({ ...x, responsable: e.target.value }))}
+              onChange={(e) =>
+                setNewInspection((x) => ({ ...x, responsable: e.target.value }))
+              }
             />
           </div>
 
           <div className="col-span-12 flex items-center justify-end gap-2 mt-2">
-            <button className="px-4 py-2 rounded border border-slate-200 bg-white hover:bg-slate-50 text-sm" onClick={() => setCreateOpen(false)}>
+            <button
+              className="px-4 py-2 rounded border border-slate-200 bg-white hover:bg-slate-50 text-sm"
+              onClick={() => setCreateOpen(false)}
+            >
               Cancelar
             </button>
-            <button className="px-4 py-2 rounded bg-slate-900 text-white hover:bg-slate-700 text-sm" onClick={createInspection}>
+            <button
+              className="px-4 py-2 rounded bg-slate-900 text-white hover:bg-slate-700 text-sm"
+              onClick={createInspection}
+            >
               Crear inspección
             </button>
           </div>
         </div>
       </Modal>
+
+      <ModalCrearChecklist
+        open={checklistModalOpen}
+        onClose={() => setChecklistModalOpen(false)}
+        onSave={(newChecklist) => {
+          setChecklists((prev) => [...prev, newChecklist]);
+          setNewInspection((x) => ({ ...x, idChecklist: newChecklist.id }));
+          setChecklistModalOpen(false);
+        }}
+      />
     </main>
-  )
+  );
 }

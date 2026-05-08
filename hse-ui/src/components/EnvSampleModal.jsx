@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react";
 
 function normalizeStr(v) {
-  return String(v ?? "").trim()
+  return String(v ?? "").trim();
 }
 
 function parseValor(raw) {
@@ -9,150 +9,179 @@ function parseValor(raw) {
   // - coma decimal
   // - <0.01 => half-LOD
   // - ND/NA => inválido
-  const s0 = normalizeStr(raw)
-  const s = s0.toUpperCase()
-  if (!s0) return { value: null, flag: "VACIO", raw: s0 }
-  if (["ND", "N/D", "NA", "N/A", "N.A", "--", "—", "-"].includes(s)) return { value: null, flag: "ND", raw: s0 }
+  const s0 = normalizeStr(raw);
+  const s = s0.toUpperCase();
+  if (!s0) return { value: null, flag: "VACIO", raw: s0 };
+  if (["ND", "N/D", "NA", "N/A", "N.A", "--", "—", "-"].includes(s))
+    return { value: null, flag: "ND", raw: s0 };
 
-  const lt = s0.match(/^<\s*([0-9]+([.,][0-9]+)?)$/)
+  const lt = s0.match(/^<\s*([0-9]+([.,][0-9]+)?)$/);
   if (lt) {
-    const lim = Number(String(lt[1]).replaceAll(",", "."))
-    if (Number.isFinite(lim)) return { value: lim * 0.5, flag: "<LOD", raw: s0 }
+    const lim = Number(String(lt[1]).replaceAll(",", "."));
+    if (Number.isFinite(lim))
+      return { value: lim * 0.5, flag: "<LOD", raw: s0 };
   }
 
-  let t = s0.replaceAll(" ", "")
-  if (t.includes(",") && !t.includes(".")) t = t.replaceAll(",", ".")
+  let t = s0.replaceAll(" ", "");
+  if (t.includes(",") && !t.includes(".")) t = t.replaceAll(",", ".");
   if (t.includes(",") && t.includes(".")) {
-    const lastComma = t.lastIndexOf(",")
-    const lastDot = t.lastIndexOf(".")
-    if (lastComma > lastDot) t = t.replaceAll(".", "").replaceAll(",", ".")
-    else t = t.replaceAll(",", "")
+    const lastComma = t.lastIndexOf(",");
+    const lastDot = t.lastIndexOf(".");
+    if (lastComma > lastDot) t = t.replaceAll(".", "").replaceAll(",", ".");
+    else t = t.replaceAll(",", "");
   }
 
-  const num = Number(t)
-  if (!Number.isFinite(num)) return { value: null, flag: "NO_NUM", raw: s0 }
-  return { value: num, flag: "OK", raw: s0 }
+  const num = Number(t);
+  if (!Number.isFinite(num)) return { value: null, flag: "NO_NUM", raw: s0 };
+  return { value: num, flag: "OK", raw: s0 };
 }
 
-export default function EnvSampleModal({ open, onClose, onSave, catalogs, defaultValues }) {
-  const [tipo, setTipo] = useState("Agua")
-  const [punto, setPunto] = useState("Punto A-01")
-  const [parametro, setParametro] = useState("Arsénico")
-  const [laboratorio, setLaboratorio] = useState("Interno")
-  const [fecha, setFecha] = useState("")
-  const [valor, setValor] = useState("")
-  const [unidad, setUnidad] = useState("")
-  const [preservante, setPreservante] = useState("")
-  const [filtroId, setFiltroId] = useState("")
-  const [sensorId, setSensorId] = useState("")
-  const [duplicadoDe, setDuplicadoDe] = useState("")
-  const [retenidaH, setRetenidaH] = useState(48)
+export default function EnvSampleModal({
+  open,
+  onClose,
+  onSave,
+  catalogs,
+  defaultValues,
+}) {
+  const [tipo, setTipo] = useState("Agua");
+  const [punto, setPunto] = useState("Punto A-01");
+  const [parametro, setParametro] = useState("Arsénico");
+  const [laboratorio, setLaboratorio] = useState("Interno");
+  const [fecha, setFecha] = useState("");
+  const [valor, setValor] = useState("");
+  const [unidad, setUnidad] = useState("");
+  const [preservante, setPreservante] = useState("");
+  const [filtroId, setFiltroId] = useState("");
+  const [sensorId, setSensorId] = useState("");
+  const [duplicadoDe, setDuplicadoDe] = useState("");
+  const [retenidaH, setRetenidaH] = useState(48);
 
   useEffect(() => {
-    if (!open) return
+    if (!open) return;
 
-    const now = new Date()
-    const yyyy = now.getFullYear()
-    const mm = String(now.getMonth() + 1).padStart(2, "0")
-    const dd = String(now.getDate()).padStart(2, "0")
-    setFecha(`${yyyy}-${mm}-${dd}`)
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    setFecha(`${yyyy}-${mm}-${dd}`);
 
-    setTipo(defaultValues?.tipo || "Agua")
-    setPunto(defaultValues?.punto || "Punto A-01")
-    setParametro(defaultValues?.parametro || "pH")
-    setLaboratorio(defaultValues?.laboratorio || "Interno")
-    setValor("")
-    setDuplicadoDe("")
-    setRetenidaH(48)
-  }, [open, defaultValues])
+    setTipo(defaultValues?.tipo || "Agua");
+    setPunto(defaultValues?.punto || "Punto A-01");
+    setParametro(defaultValues?.parametro || "pH");
+    setLaboratorio(defaultValues?.laboratorio || "Interno");
+    setValor("");
+    setDuplicadoDe("");
+    setRetenidaH(48);
+  }, [open, defaultValues]);
 
   const puntos = useMemo(() => {
-    const byTipo = catalogs?.puntosByTipo?.[tipo]
-    return (byTipo && byTipo.length ? byTipo : catalogs?.puntos) || ["Punto A-01"]
-  }, [catalogs, tipo])
+    const byTipo = catalogs?.puntosByTipo?.[tipo];
+    return (
+      (byTipo && byTipo.length ? byTipo : catalogs?.puntos) || ["Punto A-01"]
+    );
+  }, [catalogs, tipo]);
 
   const parametros = useMemo(() => {
-    const byTipo = catalogs?.parametrosByTipo?.[tipo]
-    return (byTipo && byTipo.length ? byTipo : catalogs?.parametros) || ["pH"]
-  }, [catalogs, tipo])
+    const byTipo = catalogs?.parametrosByTipo?.[tipo];
+    return (byTipo && byTipo.length ? byTipo : catalogs?.parametros) || ["pH"];
+  }, [catalogs, tipo]);
 
   // Corrige selections si el tipo cambia y el valor actual queda fuera del catálogo
   useEffect(() => {
-    if (!open) return
-    if (puntos.length && !puntos.includes(punto)) setPunto(puntos[0])
-  }, [open, puntos, punto])
+    if (!open) return;
+    if (puntos.length && !puntos.includes(punto)) setPunto(puntos[0]);
+  }, [open, puntos, punto]);
 
   useEffect(() => {
-    if (!open) return
-    if (parametros.length && !parametros.includes(parametro)) setParametro(parametros[0])
-  }, [open, parametros, parametro])
+    if (!open) return;
+    if (parametros.length && !parametros.includes(parametro))
+      setParametro(parametros[0]);
+  }, [open, parametros, parametro]);
 
   function unitFromParam(p) {
-    const s = String(p || "").trim()
-    const lower = s.toLowerCase()
+    const s = String(p || "").trim();
+    const lower = s.toLowerCase();
 
     // Agua
-    if (s === "pH") return ""
-    if (lower.includes("conduct")) return "µS/cm"
-    if (lower.includes("turb")) return "NTU"
-    if (lower.includes("oxigen") || lower === "od") return "mg/L"
-    if (lower.includes("dbo")) return "mg/L"
-    if (lower.includes("dqo")) return "mg/L"
-    if (lower.includes("sst") || lower.includes("tss") || lower.includes("solidos")) return "mg/L"
-    if (lower.includes("nitr")) return "mg/L"
-    if (lower.includes("amon")) return "mg/L"
-    if (lower.includes("aceite") || lower.includes("grasa")) return "mg/L"
+    if (s === "pH") return "";
+    if (lower.includes("conduct")) return "µS/cm";
+    if (lower.includes("turb")) return "NTU";
+    if (lower.includes("oxigen") || lower === "od") return "mg/L";
+    if (lower.includes("dbo")) return "mg/L";
+    if (lower.includes("dqo")) return "mg/L";
+    if (
+      lower.includes("sst") ||
+      lower.includes("tss") ||
+      lower.includes("solidos")
+    )
+      return "mg/L";
+    if (lower.includes("nitr")) return "mg/L";
+    if (lower.includes("amon")) return "mg/L";
+    if (lower.includes("aceite") || lower.includes("grasa")) return "mg/L";
 
     // Aire
-    if (s.toUpperCase() === "PM10" || s.toUpperCase() === "PM2.5") return "µg/m³"
-    if (["SO2", "NO2", "CO", "O3"].includes(s.toUpperCase())) return "µg/m³"
+    if (s.toUpperCase() === "PM10" || s.toUpperCase() === "PM2.5")
+      return "µg/m³";
+    if (["SO2", "NO2", "CO", "O3"].includes(s.toUpperCase())) return "µg/m³";
 
     // Ruido
-    if (lower.includes("laeq") || lower.includes("lmax") || lower.includes("db")) return "dB"
+    if (
+      lower.includes("laeq") ||
+      lower.includes("lmax") ||
+      lower.includes("db")
+    )
+      return "dB";
 
     // Suelo
-    if (lower.includes("materia organica") || lower.includes("materia_organica")) return "%"
-    if (lower.includes("tph") || lower.includes("hidrocar")) return "mg/kg"
+    if (
+      lower.includes("materia organica") ||
+      lower.includes("materia_organica")
+    )
+      return "%";
+    if (lower.includes("tph") || lower.includes("hidrocar")) return "mg/kg";
 
     // Por defecto
-    return "mg/L"
+    return "mg/L";
   }
 
-  const computedUnit = useMemo(() => unitFromParam(parametro), [parametro])
+  const computedUnit = useMemo(() => unitFromParam(parametro), [parametro]);
 
   useEffect(() => {
-    setUnidad(computedUnit)
-  }, [computedUnit])
+    setUnidad(computedUnit);
+  }, [computedUnit]);
 
   // Reglas UX: preservante / filtro / sensor según tipo
   useEffect(() => {
     if (tipo === "Agua" || tipo === "Suelo") {
-      setPreservante("Preservante aplicado")
-      setFiltroId("")
-      setSensorId("")
+      setPreservante("Preservante aplicado");
+      setFiltroId("");
+      setSensorId("");
     } else if (tipo === "Aire") {
-      setPreservante("")
-      setFiltroId("Filtro F-001")
-      setSensorId("")
+      setPreservante("");
+      setFiltroId("Filtro F-001");
+      setSensorId("");
     } else if (tipo === "Ruido") {
-      setPreservante("")
-      setFiltroId("")
-      setSensorId("Sensor S-12")
+      setPreservante("");
+      setFiltroId("");
+      setSensorId("Sensor S-12");
     }
-  }, [tipo])
+  }, [tipo]);
 
-  const canSave = fecha && punto && parametro && laboratorio && String(valor).trim() !== ""
+  const canSave =
+    fecha && punto && parametro && laboratorio && String(valor).trim() !== "";
 
   const handleSave = () => {
-    if (!canSave) return
-    const pv = parseValor(valor)
-    const v = pv.value
+    if (!canSave) return;
+    const pv = parseValor(valor);
+    const v = pv.value;
     if (!Number.isFinite(v)) {
-      alert(`Valor inválido (${pv.flag}). Ingresa un número (ej: 1.25, 1,25 o <0.01).`)
-      return
+      alert(
+        `Valor inválido (${pv.flag}). Ingresa un número (ej: 1.25, 1,25 o <0.01).`,
+      );
+      return;
     }
 
-    const id = `ENV-${Date.now()}`
+    const id = `ENV-${Date.now()}`;
     onSave({
       id,
       tipo,
@@ -169,21 +198,26 @@ export default function EnvSampleModal({ open, onClose, onSave, catalogs, defaul
       sensor: sensorId || "—",
       retenida_h: Number(retenidaH) || 48,
       duplicado_de: duplicadoDe || null,
-    })
-    onClose()
-  }
+    });
+    onClose();
+  };
 
-  if (!open) return null
+  if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl">
         <div className="p-4 border-b flex items-center justify-between">
           <div>
             <div className="text-lg font-semibold">Nueva muestra ambiental</div>
-            <div className="text-xs text-slate-500">Registro para tendencia y reporte</div>
+            <div className="text-xs text-slate-500">
+              Registro para tendencia y reporte
+            </div>
           </div>
-          <button className="px-3 py-1 rounded border hover:bg-slate-50" onClick={onClose}>
+          <button
+            className="px-3 py-1 rounded border hover:bg-slate-50"
+            onClick={onClose}
+          >
             Cerrar
           </button>
         </div>
@@ -191,7 +225,11 @@ export default function EnvSampleModal({ open, onClose, onSave, catalogs, defaul
         <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <div className="text-xs text-slate-500 mb-1">Tipo</div>
-            <select className="w-full border rounded px-3 py-2" value={tipo} onChange={(e) => setTipo(e.target.value)}>
+            <select
+              className="w-full border rounded px-3 py-2"
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value)}
+            >
               <option>Agua</option>
               <option>Suelo</option>
               <option>Aire</option>
@@ -201,7 +239,11 @@ export default function EnvSampleModal({ open, onClose, onSave, catalogs, defaul
 
           <div>
             <div className="text-xs text-slate-500 mb-1">Laboratorio</div>
-            <select className="w-full border rounded px-3 py-2" value={laboratorio} onChange={(e) => setLaboratorio(e.target.value)}>
+            <select
+              className="w-full border rounded px-3 py-2"
+              value={laboratorio}
+              onChange={(e) => setLaboratorio(e.target.value)}
+            >
               <option>Interno</option>
               <option>Externo</option>
             </select>
@@ -209,7 +251,11 @@ export default function EnvSampleModal({ open, onClose, onSave, catalogs, defaul
 
           <div>
             <div className="text-xs text-slate-500 mb-1">Punto</div>
-            <select className="w-full border rounded px-3 py-2" value={punto} onChange={(e) => setPunto(e.target.value)}>
+            <select
+              className="w-full border rounded px-3 py-2"
+              value={punto}
+              onChange={(e) => setPunto(e.target.value)}
+            >
               {puntos.map((p) => (
                 <option key={p}>{p}</option>
               ))}
@@ -218,7 +264,11 @@ export default function EnvSampleModal({ open, onClose, onSave, catalogs, defaul
 
           <div>
             <div className="text-xs text-slate-500 mb-1">Parámetro</div>
-            <select className="w-full border rounded px-3 py-2" value={parametro} onChange={(e) => setParametro(e.target.value)}>
+            <select
+              className="w-full border rounded px-3 py-2"
+              value={parametro}
+              onChange={(e) => setParametro(e.target.value)}
+            >
               {parametros.map((p) => (
                 <option key={p}>{p}</option>
               ))}
@@ -227,7 +277,12 @@ export default function EnvSampleModal({ open, onClose, onSave, catalogs, defaul
 
           <div>
             <div className="text-xs text-slate-500 mb-1">Fecha</div>
-            <input className="w-full border rounded px-3 py-2" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+            <input
+              className="w-full border rounded px-3 py-2"
+              type="date"
+              value={fecha}
+              onChange={(e) => setFecha(e.target.value)}
+            />
           </div>
 
           <div>
@@ -247,11 +302,18 @@ export default function EnvSampleModal({ open, onClose, onSave, catalogs, defaul
 
           <div>
             <div className="text-xs text-slate-500 mb-1">Retención (horas)</div>
-            <input className="w-full border rounded px-3 py-2" value={retenidaH} onChange={(e) => setRetenidaH(e.target.value)} placeholder="48" />
+            <input
+              className="w-full border rounded px-3 py-2"
+              value={retenidaH}
+              onChange={(e) => setRetenidaH(e.target.value)}
+              placeholder="48"
+            />
           </div>
 
           <div>
-            <div className="text-xs text-slate-500 mb-1">Duplicado de (opcional)</div>
+            <div className="text-xs text-slate-500 mb-1">
+              Duplicado de (opcional)
+            </div>
             <input
               className="w-full border rounded px-3 py-2"
               value={duplicadoDe}
@@ -261,7 +323,9 @@ export default function EnvSampleModal({ open, onClose, onSave, catalogs, defaul
           </div>
 
           <div className="md:col-span-2">
-            <div className="text-xs text-slate-500 mb-1">Detalles (auto según tipo)</div>
+            <div className="text-xs text-slate-500 mb-1">
+              Detalles (auto según tipo)
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div className="border rounded px-3 py-2 bg-slate-50 text-sm">
                 <div className="text-xs text-slate-500">Preservante</div>
@@ -280,7 +344,10 @@ export default function EnvSampleModal({ open, onClose, onSave, catalogs, defaul
         </div>
 
         <div className="p-4 border-t flex justify-end gap-2">
-          <button className="px-4 py-2 rounded border hover:bg-slate-50" onClick={onClose}>
+          <button
+            className="px-4 py-2 rounded border hover:bg-slate-50"
+            onClick={onClose}
+          >
             Cancelar
           </button>
           <button
@@ -292,5 +359,5 @@ export default function EnvSampleModal({ open, onClose, onSave, catalogs, defaul
         </div>
       </div>
     </div>
-  )
+  );
 }

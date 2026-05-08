@@ -1,83 +1,80 @@
-import { useMemo, useState } from "react"
-import Card from "../components/Card"
-import IncidentModal from "../components/IncidentModal"
+import { useMemo, useState, useEffect } from "react";
+import Card from "../components/Card";
+import IncidentModal from "../components/IncidentModal";
 
 export default function Incidents({ search }) {
-  const initialIncidents = useMemo(
-    () => [
-      {
-        id: "INC-1023",
-        fecha: "2026-02-06",
-        tipo: "Accidente",
-        area: "Taller",
-        sev: "Alta",
-        estado: "Abierto",
-        descripcion: "Golpe en mano durante manipulación de herramienta. Se activó protocolo de atención.",
-        responsable: "Supervisor SSOMA",
-        costoEstimado: 850,
-        fotos: [
-          { name: "foto1.jpg", url: "https://via.placeholder.com/800x500?text=INC-1023+Foto+1" },
-          { name: "foto2.jpg", url: "https://via.placeholder.com/800x500?text=INC-1023+Foto+2" },
-        ],
-      },
-      {
-        id: "INC-1022",
-        fecha: "2026-02-05",
-        tipo: "Incidente",
-        area: "Almacén",
-        sev: "Baja",
-        estado: "En investigación",
-        descripcion: "Derrame menor de líquido. Se aisló el área y se realizó limpieza.",
-        responsable: "Jefe de Almacén",
-        costoEstimado: 120,
-        fotos: [{ name: "foto1.jpg", url: "https://via.placeholder.com/800x500?text=INC-1022+Foto+1" }],
-      },
-      {
-        id: "INC-1021",
-        fecha: "2026-02-04",
-        tipo: "Cercano a Pérdida",
-        area: "Planta",
-        sev: "Media",
-        estado: "Cerrado",
-        descripcion: "Deslizamiento de material sin lesión. Se ajustó procedimiento y señalización.",
-        responsable: "Supervisor de Planta",
-        costoEstimado: 300,
-        fotos: [],
-      },
-      {
-        id: "INC-1020",
-        fecha: "2026-02-03",
-        tipo: "Cercano a Pérdida",
-        area: "Patio",
-        sev: "Baja",
-        estado: "Abierto",
-        descripcion: "Casi colisión por retroceso sin guía. Se coordinó charla y control de maniobras.",
-        responsable: "Operaciones",
-        costoEstimado: 0,
-        fotos: [{ name: "foto1.jpg", url: "https://via.placeholder.com/800x500?text=INC-1020+Foto+1" }],
-      },
-    ],
-    []
-  )
-
-  const [incidents, setIncidents] = useState(initialIncidents)
+  //Listar incidentes
+  const [incidents, setIncidents] = useState([]);
 
   // modal nuevo
-  const [openModal, setOpenModal] = useState(false)
+  const [openModal, setOpenModal] = useState(false);
+
+  useEffect(() => {
+    // 1. Obtener el token de autorización
+    const token =
+      localStorage.getItem("token") || sessionStorage.getItem("token");
+
+    fetch("http://localhost:4000/api/incidentes", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`, // Envío del token
+        "Content-Type": "application/json",
+      },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("No se pudieron cargar los incidentes");
+        return res.json();
+      })
+      .then((data) => {
+        // 2. Validar que 'data' sea un Array antes de transformar
+        if (!Array.isArray(data)) {
+          console.warn("La respuesta de incidentes no es un array:", data);
+          setIncidents([]);
+          return;
+        }
+
+        const formatted = data.map((x) => ({
+          id: x.Codigo,
+          nombreEmpresa: x.nombreEmpresa,
+          fecha: x.Fecha?.split("T")[0] || "Sin fecha",
+          tipo: x.Tipo,
+          area: x.Area,
+          sev: x.Severidad,
+          estado: x.Estado,
+          descripcion: x.Descripcion,
+          responsable: x.Responsable,
+          costoEstimado: x.TiempoParadaHoras,
+          fotos: (x.fotos || []).map((f) => ({
+            name: f.Nombre,
+            url: `http://localhost:4000${f.Url}`,
+          })),
+        }));
+
+        setIncidents(formatted);
+      })
+      .catch((err) => {
+        console.error("Error cargando incidentes:", err);
+        setIncidents([]); // Limpiar estado en caso de error
+      });
+  }, []);
+  const handleCreateIncident = (newIncident) => {
+    setIncidents((prev) => [newIncident, ...prev]);
+    setOpenModal(false);
+  };
 
   // modal detalle
-  const [openDetail, setOpenDetail] = useState(false)
-  const [selected, setSelected] = useState(null)
+  const [openDetail, setOpenDetail] = useState(false);
+  const [selected, setSelected] = useState(null);
 
   // buscador local
-  const [q, setQ] = useState("")
+  const [q, setQ] = useState("");
 
   const filtered = useMemo(() => {
-    const t1 = (search || "").trim().toLowerCase()
-    const t2 = (q || "").trim().toLowerCase()
-    const t = [t1, t2].filter(Boolean).join(" ").trim()
+    const t1 = (search || "").trim().toLowerCase();
+    const t2 = (q || "").trim().toLowerCase();
+    const t = [t1, t2].filter(Boolean).join(" ").trim();
 
-    if (!t) return incidents
+    if (!t) return incidents;
 
     return incidents.filter((x) =>
       [
@@ -91,44 +88,49 @@ export default function Incidents({ search }) {
         x.responsable,
         x.costoEstimado,
         (x.fotos || []).length,
-      ].some((v) => String(v ?? "").toLowerCase().includes(t))
-    )
-  }, [incidents, search, q])
+      ].some((v) =>
+        String(v ?? "")
+          .toLowerCase()
+          .includes(t),
+      ),
+    );
+  }, [incidents, search, q]);
 
   const badge = (sev) => {
-    const base = "text-xs px-2 py-1 rounded"
-    if (sev === "Alta") return <span className={`${base} bg-red-100 text-red-700`}>Alta</span>
-    if (sev === "Media") return <span className={`${base} bg-yellow-100 text-yellow-800`}>Media</span>
-    return <span className={`${base} bg-green-100 text-green-700`}>Baja</span>
-  }
+    const base = "text-xs px-2 py-1 rounded";
+    if (sev === "Alta")
+      return <span className={`${base} bg-red-100 text-red-700`}>Alta</span>;
+    if (sev === "Media")
+      return (
+        <span className={`${base} bg-yellow-100 text-yellow-800`}>Media</span>
+      );
+    return <span className={`${base} bg-green-100 text-green-700`}>Baja</span>;
+  };
 
   const shortText = (s, n = 70) => {
-    const txt = String(s || "")
-    if (txt.length <= n) return txt
-    return txt.slice(0, n) + "..."
-  }
+    const txt = String(s || "");
+    if (txt.length <= n) return txt;
+    return txt.slice(0, n) + "...";
+  };
 
   const openDetailModal = (row) => {
-    setSelected(row)
-    setOpenDetail(true)
-  }
+    setSelected(row);
+    setOpenDetail(true);
+  };
 
   const closeDetailModal = () => {
-    setOpenDetail(false)
-    setSelected(null)
-  }
-
-  const handleCreateIncident = (newIncident) => {
-    setIncidents((prev) => [newIncident, ...prev])
-    setOpenModal(false)
-  }
+    setOpenDetail(false);
+    setSelected(null);
+  };
 
   return (
     <main className="p-6 grid grid-cols-12 gap-4">
       <div className="col-span-12 flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-800">Incidentes</h1>
-          <p className="text-sm text-slate-500">Registro, seguimiento y cierre</p>
+          <p className="text-sm text-slate-500">
+            Registro, seguimiento y cierre
+          </p>
         </div>
 
         <button
@@ -150,8 +152,14 @@ export default function Incidents({ search }) {
             />
 
             <div className="text-sm text-slate-500">
-              Mostrando <span className="font-semibold text-slate-700">{filtered.length}</span> de{" "}
-              <span className="font-semibold text-slate-700">{incidents.length}</span>
+              Mostrando{" "}
+              <span className="font-semibold text-slate-700">
+                {filtered.length}
+              </span>{" "}
+              de{" "}
+              <span className="font-semibold text-slate-700">
+                {incidents.length}
+              </span>
             </div>
           </div>
 
@@ -160,6 +168,7 @@ export default function Incidents({ search }) {
               <thead>
                 <tr className="text-left text-slate-600 border-b">
                   <th className="py-2 pr-3">ID</th>
+                  <th className="py-2 pr-3">Empresa</th>
                   <th className="py-2 pr-3">Fecha</th>
                   <th className="py-2 pr-3">Tipo</th>
                   <th className="py-2 pr-3">Área</th>
@@ -175,16 +184,28 @@ export default function Incidents({ search }) {
                 {filtered.map((x) => (
                   <tr key={x.id} className="border-b last:border-b-0 align-top">
                     <td className="py-2 pr-3 font-semibold">{x.id}</td>
+                    <td className="py-2 pr-3 text-xs font-medium text-slate-500 uppercase">
+                      {x.nombreEmpresa || "General"}
+                    </td>
                     <td className="py-2 pr-3">{x.fecha}</td>
                     <td className="py-2 pr-3">{x.tipo}</td>
                     <td className="py-2 pr-3">{x.area}</td>
                     <td className="py-2 pr-3">{badge(x.sev)}</td>
                     <td className="py-2 pr-3">{x.estado}</td>
 
-                    <td className="py-2 pr-3 text-slate-600">{shortText(x.descripcion, 70)}</td>
-
                     <td className="py-2 pr-3 text-slate-600">
-                      {(x.fotos || []).length > 0 ? (x.fotos || []).length : "—"}
+                      {shortText(x.descripcion, 70)}
+                    </td>
+
+                    <td className="py-2 pr-3">
+                      {x.fotos && x.fotos.length > 0 ? (
+                        <img
+                          src={x.fotos[0].url}
+                          className="h-12 w-16 object-cover rounded"
+                        />
+                      ) : (
+                        <span className="text-slate-400 text-xs">Sin foto</span>
+                      )}
                     </td>
 
                     <td className="py-2 pr-3">
@@ -202,7 +223,7 @@ export default function Incidents({ search }) {
                 {filtered.length === 0 && (
                   <tr>
                     <td className="py-6 text-center text-slate-500" colSpan={9}>
-                      No hay resultados para “{q}”.
+                      No hay resultados para “{q || search}”.
                     </td>
                   </tr>
                 )}
@@ -211,31 +232,29 @@ export default function Incidents({ search }) {
           </div>
         </Card>
       </div>
-
-      {}
       <IncidentModal
         open={openModal}
         onClose={() => setOpenModal(false)}
         onCreate={handleCreateIncident}
         existingIds={incidents.map((i) => i.id)}
       />
-
-     
       {openDetail && selected && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 "
           role="dialog"
           aria-modal="true"
           onMouseDown={(e) => {
-            if (e.target === e.currentTarget) closeDetailModal()
+            if (e.target === e.currentTarget) closeDetailModal();
           }}
         >
-          <div className="absolute inset-0 bg-black/40" />
+          <div className="absolute inset-0 bg-black/40 " />
 
           <div className="relative w-full max-w-3xl rounded-xl bg-white shadow-lg overflow-hidden">
             <div className="flex items-start justify-between gap-3 p-4 border-b">
               <div>
-                <h2 className="text-lg font-semibold text-slate-800">Detalle del incidente</h2>
+                <h2 className="text-lg font-semibold text-slate-800">
+                  Detalle del incidente
+                </h2>
                 <p className="text-sm text-slate-500">
                   {selected.id} • {selected.fecha} • {selected.area}
                 </p>
@@ -254,7 +273,9 @@ export default function Incidents({ search }) {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="rounded-lg border p-3">
                   <p className="text-xs text-slate-500">Tipo</p>
-                  <p className="font-medium text-slate-800">{selected.tipo || "—"}</p>
+                  <p className="font-medium text-slate-800">
+                    {selected.tipo || "—"}
+                  </p>
                 </div>
 
                 <div className="rounded-lg border p-3">
@@ -264,21 +285,27 @@ export default function Incidents({ search }) {
 
                 <div className="rounded-lg border p-3">
                   <p className="text-xs text-slate-500">Estado</p>
-                  <p className="font-medium text-slate-800">{selected.estado || "—"}</p>
+                  <p className="font-medium text-slate-800">
+                    {selected.estado || "—"}
+                  </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="rounded-lg border p-3">
                   <p className="text-xs text-slate-500">Responsable</p>
-                  <p className="font-medium text-slate-800">{selected.responsable || "—"}</p>
+                  <p className="font-medium text-slate-800">
+                    {selected.responsable || "—"}
+                  </p>
                 </div>
 
                 <div className="rounded-lg border p-3">
-                  <p className="text-xs text-slate-500">Costo estimado</p>
+                  <p className="text-xs text-slate-500">
+                    Tiempo estimado de parada de actividad
+                  </p>
                   <p className="font-medium text-slate-800">
                     {typeof selected.costoEstimado === "number"
-                      ? `S/ ${selected.costoEstimado.toFixed(2)}`
+                      ? `${selected.costoEstimado % 1 === 0 ? selected.costoEstimado : selected.costoEstimado.toFixed(1)} horas`
                       : "—"}
                   </p>
                 </div>
@@ -286,11 +313,15 @@ export default function Incidents({ search }) {
 
               <div className="rounded-lg border p-3">
                 <p className="text-xs text-slate-500 mb-1">Descripción</p>
-                <p className="text-slate-700 whitespace-pre-wrap">{selected.descripcion || "—"}</p>
+                <p className="text-slate-700 whitespace-pre-wrap">
+                  {selected.descripcion || "—"}
+                </p>
               </div>
 
               <div className="rounded-lg border p-3">
-                <p className="text-xs text-slate-500 mb-3">Fotografías adjuntas</p>
+                <p className="text-xs text-slate-500 mb-3">
+                  Fotografías adjuntas
+                </p>
 
                 {Array.isArray(selected.fotos) && selected.fotos.length > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -312,7 +343,9 @@ export default function Incidents({ search }) {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-500">No hay fotografías adjuntas.</p>
+                  <p className="text-sm text-slate-500">
+                    No hay fotografías adjuntas.
+                  </p>
                 )}
               </div>
             </div>
@@ -320,5 +353,5 @@ export default function Incidents({ search }) {
         </div>
       )}
     </main>
-  )
+  );
 }
