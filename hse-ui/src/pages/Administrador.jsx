@@ -274,83 +274,6 @@ export default function Administrador() {
           )}
         </div>
 
-<<<<<<< HEAD
-      {/* Si hay una empresa seleccionada para configurar, mostramos el componente de configuración */}
-      {selectedEmpresaConfig ? (
-        <ConfiguracionEmpresa
-          empresa={selectedEmpresaConfig}
-          onBack={() => {
-            setSelectedEmpresaConfig(null);
-            loadData(); // Recargar datos al volver
-          }}
-        />
-      ) : (
-        <>
-          {/* ESTADÍSTICAS */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-              <p className="text-sm font-medium text-slate-500">Usuarios</p>
-              <p className="text-3xl font-bold">{stats.total}</p>
-            </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-              <p className="text-sm font-medium text-slate-500">Activos</p>
-              <p className="text-3xl font-bold text-green-600">
-                {stats.activos}
-              </p>
-            </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-              <p className="text-sm font-medium text-slate-500">Empresas</p>
-              <p className="text-3xl font-bold text-blue-600">
-                {empresas.length}
-              </p>
-            </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-              <p className="text-sm font-medium text-slate-500 mb-3">
-                Licencias
-              </p>
-
-              <div className="flex items-center justify-between">
-                {/* Totales asignadas */}
-                <div className="text-center flex-1">
-                  <p className="text-xs text-slate-400">Totales asignadas</p>
-                  <p className="text-2xl font-bold text-purple-600">
-                    {empresas.reduce(
-                      (acc, e) => acc + (e.licenciasTotales || 0),
-                      0,
-                    )}
-                  </p>
-                </div>
-
-                {/* Separador */}
-                <div className="h-10 w-px bg-slate-200 mx-4" />
-
-                {/* Usadas */}
-                <div className="text-center flex-1">
-                  <p className="text-xs text-slate-400">Licencias usadas</p>
-                  <p className="text-2xl font-bold text-red-500">
-                    {empresas.reduce(
-                      (acc, e) => acc + (e.licenciasUsadas || 0),
-                      0,
-                    )}
-                  </p>
-                </div>
-
-                {/* Separador */}
-                <div className="h-10 w-px bg-slate-200 mx-4" />
-
-                {/* Disponibles */}
-                <div className="text-center flex-1">
-                  <p className="text-xs text-slate-400">Licencias disponibles</p>
-                  <p className="text-2xl font-bold text-green-500">
-                    {empresas.reduce(
-                      (acc, e) =>
-                        acc +
-                        ((e.licenciasTotales || 0) - (e.licenciasUsadas || 0)),
-                      0,
-                    )}
-                  </p>
-                </div>
-=======
         {/* Si hay una empresa seleccionada para configurar, mostramos el componente de configuración */}
         {selectedEmpresaConfig ? (
           <ConfiguracionEmpresa
@@ -367,7 +290,6 @@ export default function Administrador() {
               <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                 <p className="text-sm font-medium text-slate-500">Usuarios</p>
                 <p className="text-3xl font-bold">{stats.total}</p>
->>>>>>> 023d44a6e62fc0dc3b57eb1c53089673f47ee195
               </div>
               <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                 <p className="text-sm font-medium text-slate-500">Activos</p>
@@ -386,34 +308,34 @@ export default function Administrador() {
                   Licencias
                 </p>
 
-                <div className="flex items-center justify-between">
-                  {/* Totales */}
-                  <div className="text-center flex-1">
-                    <p className="text-xs text-slate-400">Totales</p>
-                    <p className="text-2xl font-bold text-purple-600">
-                      {empresas.reduce(
-                        (acc, e) => acc + (e.licenciasTotales || 0),
-                        0,
-                      )}
-                    </p>
-                  </div>
+              <div className="flex items-center justify-between">
+                {/* Totales */}
+                <div className="text-center flex-1">
+                  <p className="text-xs text-slate-400">Totales</p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {empresas.reduce(
+                      (acc, e) => acc + (e.licenciasTotales || 0),
+                      0,
+                    )}
+                  </p>
+                </div>
 
                   {/* Separador */}
                   <div className="h-10 w-px bg-slate-200 mx-4" />
 
-                  {/* Usadas */}
-                  <div className="text-center flex-1">
-                    <p className="text-xs text-slate-400">Usadas</p>
-                    <p className="text-2xl font-bold text-red-500">
-                      {empresas.reduce(
-                        (acc, e) => acc + (e.licenciasUsadas || 0),
-                        0,
-                      )}
-                    </p>
-                  </div>
+                {/* Usadas */}
+                <div className="text-center flex-1">
+                  <p className="text-xs text-slate-400">Usadas</p>
+                  <p className="text-2xl font-bold text-red-500">
+                    {empresas.reduce(
+                      (acc, e) => acc + (e.licenciasUsadas || 0),
+                      0,
+                    )}
+                  </p>
                 </div>
               </div>
             </div>
+          </div>
 
             {/* SELECTOR DE VISTA */}
             <div className="bg-white p-3 md:p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-4 items-center">
