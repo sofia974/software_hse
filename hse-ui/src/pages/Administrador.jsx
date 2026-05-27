@@ -414,9 +414,9 @@ export default function Administrador() {
               </p>
 
               <div className="flex items-center justify-between">
-                {/* Totales */}
+                {/* Totales asignadas */}
                 <div className="text-center flex-1">
-                  <p className="text-xs text-slate-400">Totales</p>
+                  <p className="text-xs text-slate-400">Totales asignadas</p>
                   <p className="text-2xl font-bold text-purple-600">
                     {empresas.reduce(
                       (acc, e) => acc + (e.licenciasTotales || 0),
@@ -430,10 +430,26 @@ export default function Administrador() {
 
                 {/* Usadas */}
                 <div className="text-center flex-1">
-                  <p className="text-xs text-slate-400">Usadas</p>
+                  <p className="text-xs text-slate-400">Licencias usadas</p>
                   <p className="text-2xl font-bold text-red-500">
                     {empresas.reduce(
                       (acc, e) => acc + (e.licenciasUsadas || 0),
+                      0,
+                    )}
+                  </p>
+                </div>
+
+                {/* Separador */}
+                <div className="h-10 w-px bg-slate-200 mx-4" />
+
+                {/* Disponibles */}
+                <div className="text-center flex-1">
+                  <p className="text-xs text-slate-400">Licencias disponibles</p>
+                  <p className="text-2xl font-bold text-green-500">
+                    {empresas.reduce(
+                      (acc, e) =>
+                        acc +
+                        ((e.licenciasTotales || 0) - (e.licenciasUsadas || 0)),
                       0,
                     )}
                   </p>
