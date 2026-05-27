@@ -55,34 +55,15 @@ export default function Administrador() {
   const [openCreateUser, setOpenCreateUser] = useState(false);
   const [openCreateEmpresa, setOpenCreateEmpresa] = useState(false);
   const [openRoleModal, setOpenRoleModal] = useState(false);
-
   // --- ESTADOS DE FORMULARIOS ---
   const [selectedRole, setSelectedRole] = useState(null);
   const [roleModules, setRoleModules] = useState([]);
   const [selectedEmpresa, setSelectedEmpresa] = useState(null);
-  const [newEmpresa, setNewEmpresa] = useState({
-    nombre: "",
-    ruc: "",
-    direccion: "",
-  });
-  const [newUser, setNewUser] = useState({
-    nombre: "",
-    idArea: "",
-    idRol: "",
-    idEmpresa: "",
-    username: "",
-    email: "",
-    password: "",
-    activo: true,
-    cursosSeleccionados: [],
-  });
-
   // Administrador.jsx
   const [openModalRol, setOpenModalRol] = useState(false);
   // Distribucion.jsx
   const [openDistribuir, setOpenDistribuir] = useState(false);
   // Crear Usuario con Licencia.jsx
-
   const fetchRoles = async () => {
     try {
       const token =
@@ -149,106 +130,15 @@ export default function Administrador() {
     loadData();
   }, []);
 
-  // --- LÓGICA DE FILTRADO ---
-  const filteredUsers = useMemo(() => {
-    if (!Array.isArray(users)) return []; // Si no es array, devolvemos lista vacía
-
-    return users.filter((u) => {
-      const matchSearch = u.username
-        ?.toLowerCase()
-        .includes(search.toLowerCase());
-      const matchRole = roleFilter === "all" || u.rol === roleFilter;
-      return matchSearch && matchRole;
-    });
-  }, [users, search, roleFilter]);
-
   const stats = useMemo(
     () => ({
       total: users.length,
-      activos: users.filter((u) => u.activo).length,
+      // activos: users.filter((u) => u.activo).length,
+      activos: users.filter((u) => Number(u.is_active) === 1).length,
       admins: users.filter((u) => u.rol === "Administrador").length,
     }),
     [users],
   );
-
-  // ACCIONES API
-  const handleCreateEmpresa = async () => {
-    if (!newEmpresa.nombre) return alert("Nombre de empresa requerido");
-    try {
-      const res = await fetch("http://localhost:4000/api/empresas", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
-        },
-        body: JSON.stringify(newEmpresa),
-      });
-      if (res.ok) {
-        toast.success("Empresa creada correctamente");
-        setOpenCreateEmpresa(false);
-        setNewEmpresa({ nombre: "", ruc: "", direccion: "" });
-        loadData();
-      }
-    } catch (e) {
-      console.error(e);
-      toast.error("Hubo un error al intentar crear la empresa.");
-    }
-  };
-  const handleCreateUser = async () => {
-    if (
-      !newUser.idEmpresa ||
-      !newUser.username ||
-      !newUser.email ||
-      !newUser.password
-    ) {
-      return alert("Campos obligatorios faltantes");
-    }
-
-    try {
-      const res = await fetch("http://localhost:4000/api/usuarios-completo", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
-        },
-        body: JSON.stringify({
-          ...newUser,
-          idArea: Number(newUser.idArea),
-          idRol: Number(newUser.idRol),
-          idEmpresa: Number(newUser.idEmpresa),
-        }),
-      });
-
-      const data = await res.json(); // 🔥 IMPORTANTE
-
-      if (!res.ok) {
-        console.log("ERROR BACKEND:", data);
-        toast.error(data.error || "Error al crear usuario");
-        return;
-      }
-
-      toast.success("Usuario creado correctamente");
-
-      setOpenCreateUser(false);
-      setNewUser({
-        nombre: "",
-        idArea: "",
-        idRol: "",
-        idEmpresa: "",
-        username: "",
-        email: "",
-        password: "",
-        activo: true,
-        cursosSeleccionados: [],
-      });
-
-      loadData();
-    } catch (e) {
-      console.error(e);
-      toast.error("Hubo un error al intentar crear el usuario.");
-    }
-  };
-
   const openPermissions = async (role) => {
     setSelectedRole(role);
     try {
@@ -268,6 +158,7 @@ export default function Administrador() {
 
   const toggleModulo = async (idModulo) => {
     const exists = roleModules.includes(idModulo);
+
     try {
       const res = await fetch("http://localhost:4000/api/roles-modulos", {
         method: exists ? "DELETE" : "POST",
@@ -275,19 +166,28 @@ export default function Administrador() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${getToken()}`,
         },
-        body: JSON.stringify({ idRol: selectedRole.idRol, idModulo }),
+        body: JSON.stringify({
+          idRol: selectedRole.idRol,
+          idModulo,
+        }),
       });
+
       if (res.ok) {
         setRoleModules((prev) =>
           exists ? prev.filter((id) => id !== idModulo) : [...prev, idModulo],
         );
+
+        // ← RECARGAR TODO
+        await loadData();
       }
+
       toast.success("¡Rol modificado correctamente!");
     } catch (e) {
       console.error(e);
       toast.error("Hubo un error al intentar modificar el rol.");
     }
   };
+
   const usersByEmpresa = useMemo(() => {
     const groups = {};
 
@@ -338,47 +238,43 @@ export default function Administrador() {
     return roots;
   }, [empresas]);
   return (
-    <main className="min-h-screen bg-slate-50 p-4 md:p-8 space-y-5 text-slate-800">
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-            Panel de Administración
-          </h1>
-          <p className="text-slate-500">
-            Gestión global de entidades y accesos.
-          </p>
-        </div>
-        {!selectedEmpresaConfig && (
-          <div className="flex gap-3">
-            <button
-              onClick={() => setOpenCreateEmpresa(true)}
-              className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 shadow-sm transition-all"
-            >
-              + Nueva Empresa
-            </button>
-            {/* <button
-              onClick={() => setOpenCreateUser(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm transition-all"
-            >
-              + Registrar Usuario
-            </button> */}
-            <button
-              onClick={() => setOpenCreateUser(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              + Registrar Usuario
-            </button>
-            <button
-              onClick={() => setOpenDistribuir(true)}
-              className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-sm transition-all"
-            >
-              Distribuir Licencias
-            </button>
+    <>
+      <main className="min-h-screen bg-slate-50 p-4 md:p-8 space-y-5 text-slate-800">
+        {/* HEADER */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
+              Panel de Administración
+            </h1>
+            <p className="text-slate-500">
+              Gestión global de entidades y accesos.
+            </p>
           </div>
-        )}
-      </div>
+          {!selectedEmpresaConfig && (
+            <div className="flex gap-3">
+              <button
+                onClick={() => setOpenCreateEmpresa(true)}
+                className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 shadow-sm transition-all"
+              >
+                + Nueva Empresa
+              </button>
+              <button
+                onClick={() => setOpenCreateUser(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                + Registrar Usuario
+              </button>
+              <button
+                onClick={() => setOpenDistribuir(true)}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-sm transition-all"
+              >
+                Distribuir Licencias
+              </button>
+            </div>
+          )}
+        </div>
 
+<<<<<<< HEAD
       {/* Si hay una empresa seleccionada para configurar, mostramos el componente de configuración */}
       {selectedEmpresaConfig ? (
         <ConfiguracionEmpresa
@@ -454,219 +350,274 @@ export default function Administrador() {
                     )}
                   </p>
                 </div>
+=======
+        {/* Si hay una empresa seleccionada para configurar, mostramos el componente de configuración */}
+        {selectedEmpresaConfig ? (
+          <ConfiguracionEmpresa
+            empresa={selectedEmpresaConfig}
+            onBack={() => {
+              setSelectedEmpresaConfig(null);
+              loadData();
+            }}
+          />
+        ) : (
+          <>
+            {/* ESTADÍSTICAS */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <p className="text-sm font-medium text-slate-500">Usuarios</p>
+                <p className="text-3xl font-bold">{stats.total}</p>
+>>>>>>> 023d44a6e62fc0dc3b57eb1c53089673f47ee195
               </div>
-            </div>
-          </div>
-
-          {/* SELECTOR DE VISTA */}
-          <div className="bg-white p-3 md:p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-4 items-center">
-            {/* INPUT: Ahora ocupa todo el ancho en móvil y se reparte en desktop */}
-            <input
-              placeholder="Buscar..."
-              className="w-full sm:flex-1 px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-
-            {/* CONTENEDOR DE TABS: Ahora es responsivo */}
-            <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto overflow-x-auto sm:overflow-visible">
-              {["personas", "roles", "empresas"].map((v) => (
-                <button
-                  key={v}
-                  onClick={() => setView(v)}
-                  className={`flex-1 sm:flex-none px-3 min-[400px]:px-6 py-1.5 rounded-lg text-xs min-[400px]:text-sm font-medium transition-all capitalize whitespace-nowrap ${
-                    view === v
-                      ? "bg-white shadow text-blue-600"
-                      : "text-slate-500 hover:text-slate-700"
-                  }`}
-                >
-                  {v}
-                </button>
-              ))}
-            </div>
-          </div>
-          {/* VISTA: USUARIOS AGRUPADOS POR EMPRESA */}
-          {view === "personas" && (
-            <div>
-              {Object.keys(usersByEmpresa).length === 0 ? (
-                <p className="text-slate-500">
-                  No se encontraron empresas ni usuarios.
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <p className="text-sm font-medium text-slate-500">Activos</p>
+                <p className="text-3xl font-bold text-green-600">
+                  {stats.activos}
                 </p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {Object.entries(usersByEmpresa).map(([idEmpresa, data]) => (
-                    <button
-                      key={idEmpresa}
-                      onClick={() =>
-                        setSelectedEmpresa({
-                          nombre: data.nombre,
-                          usuarios: data.usuarios,
-                        })
-                      }
-                      className="group bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-blue-400 hover:shadow-md transition-all text-left"
-                    >
-                      <div className="flex flex-col gap-2">
-                        <h3 className="font-bold text-slate-800 group-hover:text-blue-600 text-lg">
-                          🏢 {data.nombre}
-                        </h3>
-
-                        <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs font-semibold rounded-full w-fit">
-                          {data.usuarios.length} Colaboradores
-                        </span>
-
-                        <p className="text-xs text-slate-400 mt-2">
-                          Haz clic para ver detalles →
-                        </p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {selectedEmpresa && (
-                <UserModal
-                  data={selectedEmpresa}
-                  onClose={() => setSelectedEmpresa(null)}
-                />
-              )}
-            </div>
-          )}
-
-          {/* VISTA: ROLES */}
-          {view === "roles" && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold text-slate-800">
-                  Roles del Sistema
-                </h2>
-                <button
-                  onClick={() => setOpenModalRol(true)}
-                  className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold text-sm"
-                >
-                  + Nuevo Rol
-                </button>
               </div>
-
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <table className="w-full text-left">
-                  <thead className="bg-slate-50 border-b">
-                    <tr>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">
-                        Rol
-                      </th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-right">
-                        Acción
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {/* USAMOS EL ENCADENAMIENTO OPCIONAL ?. O VALIDAMOS ARRAY */}
-                    {Array.isArray(roles) && roles.length > 0 ? (
-                      roles.map((r) => (
-                        <tr key={r.idRol} className="hover:bg-slate-50/50">
-                          <td className="px-6 py-4 font-semibold">
-                            {r.nombre}
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <button
-                              onClick={() => openPermissions(r)}
-                              className="text-blue-600 font-bold text-sm hover:underline"
-                            >
-                              Configurar Permisos
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td
-                          colSpan="2"
-                          className="px-6 py-8 text-center text-slate-400 text-sm"
-                        >
-                          No se encontraron roles o no tienes permisos para
-                          verlos.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <p className="text-sm font-medium text-slate-500">Empresas</p>
+                <p className="text-3xl font-bold text-blue-600">
+                  {empresas.length}
+                </p>
               </div>
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <p className="text-sm font-medium text-slate-500 mb-3">
+                  Licencias
+                </p>
 
-              {/* Agrega el componente del modal aquí al final */}
-              <ModalCrearRol
-                open={openModalRol}
-                onClose={() => setOpenModalRol(false)}
-                onSave={fetchRoles}
-              />
-            </div>
-          )}
-
-          {/* VISTA: EMPRESAS (NUEVA) */}
-          {view === "empresas" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {empresasJerarquicas.map((empresa) => (
-                <div
-                  key={empresa.idEmpresa}
-                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all"
-                >
-                  {/* EMPRESA PRINCIPAL */}
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-bold text-lg text-slate-800">
-                        🏢 {empresa.razonSocial}
-                      </h3>
-                      <p className="text-sm text-slate-500 font-mono">
-                        RUC: {empresa.ruc}
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={() => setSelectedEmpresaConfig(empresa)}
-                      className="px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all text-sm font-bold"
-                    >
-                      ⚙️ Configurar
-                    </button>
+                <div className="flex items-center justify-between">
+                  {/* Totales */}
+                  <div className="text-center flex-1">
+                    <p className="text-xs text-slate-400">Totales</p>
+                    <p className="text-2xl font-bold text-purple-600">
+                      {empresas.reduce(
+                        (acc, e) => acc + (e.licenciasTotales || 0),
+                        0,
+                      )}
+                    </p>
                   </div>
 
-                  {/* SUBEMPRESAS */}
-                  {empresa.subempresas?.length > 0 && (
-                    <div className="mt-4 border-t pt-3">
-                      <p className="text-xs font-bold text-slate-400 mb-2">
-                        Subempresas
-                      </p>
+                  {/* Separador */}
+                  <div className="h-10 w-px bg-slate-200 mx-4" />
 
-                      <div className="space-y-2">
-                        {empresa.subempresas.map((sub) => (
-                          <div
-                            key={sub.idEmpresa}
-                            className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border"
-                          >
-                            <div>
-                              <p className="font-medium text-slate-700">
-                                └ {sub.razonSocial}
-                              </p>
-                              <p className="text-xs text-slate-400">
-                                RUC: {sub.ruc}
-                              </p>
-                            </div>
-
-                            <button
-                              onClick={() => setSelectedEmpresaConfig(sub)}
-                              className="text-xs px-2 py-1 bg-white border rounded-md hover:bg-blue-50"
-                            >
-                              Ver
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  {/* Usadas */}
+                  <div className="text-center flex-1">
+                    <p className="text-xs text-slate-400">Usadas</p>
+                    <p className="text-2xl font-bold text-red-500">
+                      {empresas.reduce(
+                        (acc, e) => acc + (e.licenciasUsadas || 0),
+                        0,
+                      )}
+                    </p>
+                  </div>
                 </div>
-              ))}
+              </div>
             </div>
-          )}
-        </>
-      )}
+
+            {/* SELECTOR DE VISTA */}
+            <div className="bg-white p-3 md:p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-4 items-center">
+              {/* INPUT: Ahora ocupa todo el ancho en móvil y se reparte en desktop */}
+              <input
+                placeholder="Buscar..."
+                className="w-full sm:flex-1 px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+
+              {/* CONTENEDOR DE TABS: Ahora es responsivo */}
+              <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto overflow-x-auto sm:overflow-visible">
+                {["personas", "roles", "empresas"].map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => setView(v)}
+                    className={`flex-1 sm:flex-none px-3 min-[400px]:px-6 py-1.5 rounded-lg text-xs min-[400px]:text-sm font-medium transition-all capitalize whitespace-nowrap ${
+                      view === v
+                        ? "bg-white shadow text-blue-600"
+                        : "text-slate-500 hover:text-slate-700"
+                    }`}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* VISTA: USUARIOS AGRUPADOS POR EMPRESA */}
+            {view === "personas" && (
+              <div>
+                {Object.keys(usersByEmpresa).length === 0 ? (
+                  <p className="text-slate-500">
+                    No se encontraron empresas ni usuarios.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {Object.entries(usersByEmpresa).map(([idEmpresa, data]) => (
+                      <button
+                        key={idEmpresa}
+                        onClick={() =>
+                          setSelectedEmpresa({
+                            nombre: data.nombre,
+                            usuarios: data.usuarios,
+                          })
+                        }
+                        className="group bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-blue-400 hover:shadow-md transition-all text-left"
+                      >
+                        <div className="flex flex-col gap-2">
+                          <h3 className="font-bold text-slate-800 group-hover:text-blue-600 text-lg">
+                            🏢 {data.nombre}
+                          </h3>
+
+                          <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs font-semibold rounded-full w-fit">
+                            {data.usuarios.length} Colaboradores
+                          </span>
+
+                          <p className="text-xs text-slate-400 mt-2">
+                            Haz clic para ver detalles →
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {selectedEmpresa && (
+                  <UserModal
+                    data={selectedEmpresa}
+                    onClose={() => setSelectedEmpresa(null)}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* VISTA: ROLES */}
+            {view === "roles" && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-bold text-slate-800">
+                    Roles del Sistema
+                  </h2>
+                  <button
+                    onClick={() => setOpenModalRol(true)}
+                    className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold text-sm"
+                  >
+                    + Nuevo Rol
+                  </button>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-50 border-b">
+                      <tr>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">
+                          Rol
+                        </th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-right">
+                          Acción
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {/* USAMOS EL ENCADENAMIENTO OPCIONAL ?. O VALIDAMOS ARRAY */}
+                      {Array.isArray(roles) && roles.length > 0 ? (
+                        roles.map((r) => (
+                          <tr key={r.idRol} className="hover:bg-slate-50/50">
+                            <td className="px-6 py-4 font-semibold">
+                              {r.nombre}
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <button
+                                onClick={() => openPermissions(r)}
+                                className="text-blue-600 font-bold text-sm hover:underline"
+                              >
+                                Configurar Permisos
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td
+                            colSpan="2"
+                            className="px-6 py-8 text-center text-slate-400 text-sm"
+                          >
+                            No se encontraron roles o no tienes permisos para
+                            verlos.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* VISTA: EMPRESAS (NUEVA) */}
+            {view === "empresas" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {empresasJerarquicas.map((empresa) => (
+                  <div
+                    key={empresa.idEmpresa}
+                    className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all"
+                  >
+                    {/* EMPRESA PRINCIPAL */}
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-bold text-lg text-slate-800">
+                          🏢 {empresa.razonSocial}
+                        </h3>
+                        <p className="text-sm text-slate-500 font-mono">
+                          RUC: {empresa.ruc}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => setSelectedEmpresaConfig(empresa)}
+                        className="px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all text-sm font-bold"
+                      >
+                        ⚙️ Configurar
+                      </button>
+                    </div>
+
+                    {/* SUBEMPRESAS */}
+                    {empresa.subempresas?.length > 0 && (
+                      <div className="mt-4 border-t pt-3">
+                        <p className="text-xs font-bold text-slate-400 mb-2">
+                          Subempresas
+                        </p>
+
+                        <div className="space-y-2">
+                          {empresa.subempresas.map((sub) => (
+                            <div
+                              key={sub.idEmpresa}
+                              className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border"
+                            >
+                              <div>
+                                <p className="font-medium text-slate-700">
+                                  └ {sub.razonSocial}
+                                </p>
+                                <p className="text-xs text-slate-400">
+                                  RUC: {sub.ruc}
+                                </p>
+                              </div>
+
+                              <button
+                                onClick={() => setSelectedEmpresaConfig(sub)}
+                                className="text-xs px-2 py-1 bg-white border rounded-md hover:bg-blue-50"
+                              >
+                                Ver
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </main>
       {/* MODAL: NUEVA EMPRESA */}
       <ModalCrearEmpresa
         open={openCreateEmpresa}
@@ -679,8 +630,11 @@ export default function Administrador() {
         onClose={() => setOpenCreateUser(false)}
         empresas={empresas}
         roles={roles}
-        onUserCreated={(user) => {
-          setUsers((prev) => [...prev, user]);
+        // onUserCreated={(user) => {
+        //   setUsers((prev) => [...prev, user]);
+        // }}
+        onUserCreated={async () => {
+          await loadData();
         }}
       />
 
@@ -716,6 +670,12 @@ export default function Administrador() {
         open={openDistribuir}
         onClose={() => setOpenDistribuir(false)}
       />
-    </main>
+      {/* Agrega el componente del modal aquí al final */}
+      <ModalCrearRol
+        open={openModalRol}
+        onClose={() => setOpenModalRol(false)}
+        onSave={fetchRoles}
+      />
+    </>
   );
 }

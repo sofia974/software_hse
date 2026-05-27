@@ -42,12 +42,28 @@ const PAGES_COMPONENTS = {
   Administrador: <Administrador />,
   Superadministrador: <SuperAdmin />,
 };
+function getFirstAllowedPage(user) {
+  if (!user?.permisos?.length) {
+    return null;
+  }
 
+  // SUPER ADMIN
+  const isSuperAdmin =
+    user?.nivel_acceso === "SUPER_ADMIN" || user?.idNivelAcceso === 1;
+
+  if (isSuperAdmin) {
+    return "Dashboard";
+  }
+
+  // Primer permiso asignado
+  return user.permisos[0]?.nombre || null;
+}
 export default function App() {
   const isPublicReport = window.location.pathname === "/reportar";
 
   const [user, setUser] = useState(() => getStoredUser());
-  const [page, setPage] = useState("Dashboard");
+  // const [page, setPage] = useState("Dashboard");
+  const [page, setPage] = useState(() => getFirstAllowedPage(getStoredUser()));
   const [search, setSearch] = useState("");
 
   async function handleLogout() {
@@ -109,16 +125,32 @@ export default function App() {
   }, [user]); // Se reinicia si el usuario cambia
 
   // --- LÓGICA DE SEGURIDAD ---
+  // const tieneAcceso = useMemo(() => {
+  //   if (isPublicReport) return false;
+  //   if (!user) return false;
+
+  //   if (page === "Dashboard") return true;
+
+  //   const isSuperAdmin =
+  //     user?.nivel_acceso === "SUPER_ADMIN" || user?.idNivelAcceso === 1;
+
+  //   if (page === "Superadministrador") {
+  //     return isSuperAdmin;
+  //   }
+
+  //   // 🔥 ADMIN_EMPRESA tiene acceso a todo MENOS SuperAdmin
+  //   if (user.nivel === "ADMIN_EMPRESA") {
+  //     return true;
+  //   }
+
+  //   // 🔥 USER depende de permisos
+  //   return user.permisos?.some((p) => p.nombre === page);
+  // }, [user, page, isPublicReport]);
+
   const tieneAcceso = useMemo(() => {
     if (isPublicReport) return false;
     if (!user) return false;
 
-    if (page === "Dashboard") return true;
-
-    // 🔥 SOLO SUPER ADMIN accede a ese módulo
-    // if (page === "Superadministrador") {
-    //   return user.nivel === "SUPER_ADMIN";
-    // }
     const isSuperAdmin =
       user?.nivel_acceso === "SUPER_ADMIN" || user?.idNivelAcceso === 1;
 
@@ -126,25 +158,43 @@ export default function App() {
       return isSuperAdmin;
     }
 
-    // 🔥 ADMIN_EMPRESA tiene acceso a todo MENOS SuperAdmin
+    // ADMIN EMPRESA
     if (user.nivel === "ADMIN_EMPRESA") {
-      return true;
+      return page !== "Superadministrador";
     }
 
-    // 🔥 USER depende de permisos
+    // USERS NORMALES
     return user.permisos?.some((p) => p.nombre === page);
   }, [user, page, isPublicReport]);
 
-  console.log("USER:", user);
-  console.log("NIVEL:", user?.nivel);
+  const allowedPages = user?.permisos?.map((p) => p.nombre) || [];
+
+  const isSuperAdmin =
+    user?.nivel_acceso === "SUPER_ADMIN" || user?.idNivelAcceso === 1;
+
+  // Si la página actual no está permitida,
+  // usar automáticamente la primera válida
+  const currentPage = isSuperAdmin
+    ? page
+    : allowedPages.includes(page)
+      ? page
+      : allowedPages[0];
+
   // Página pública de reporte de incidentes — sin autenticación
   if (isPublicReport) {
     return <ReportarIncidente />;
   }
 
+  // function handleLogin(userData) {
+  //   setUser(userData);
+  //   setPage("Dashboard");
+  // }
   function handleLogin(userData) {
     setUser(userData);
-    setPage("Dashboard");
+
+    const firstPage = getFirstAllowedPage(userData);
+
+    setPage(firstPage);
   }
 
   if (!user) {
@@ -156,7 +206,8 @@ export default function App() {
       <Notificacion />
 
       {/* El Sidebar ya recibe el user internamente del storage o puedes pasárselo por props */}
-      <Sidebar page={page} setPage={setPage} user={user} />
+      {/* <Sidebar page={page} setPage={setPage} user={user} /> */}
+      <Sidebar page={currentPage} setPage={setPage} user={user} />
 
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar
@@ -170,7 +221,7 @@ export default function App() {
         <div className="flex-1 min-w-0 overflow-auto">
           {/* RENDERIZADO PROTEGIDO */}
           {tieneAcceso ? (
-            PAGES_COMPONENTS[page] || (
+            PAGES_COMPONENTS[currentPage] || (
               <div className="p-10 text-slate-500 text-xl">
                 {page} (en construcción)
               </div>
@@ -184,7 +235,7 @@ export default function App() {
                 </h2>
                 <p className="text-slate-600 mb-6">
                   No tienes los permisos necesarios para visualizar el módulo:
-                  <span className="font-bold"> {page}</span>.
+                  <span className="font-bold"> {currentPage}</span>.
                 </p>
                 <button
                   onClick={() => setPage("Dashboard")}

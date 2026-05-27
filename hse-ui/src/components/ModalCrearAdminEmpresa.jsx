@@ -52,7 +52,7 @@ export default function ModalCrearAdminEmpresa({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
       <div className="bg-white rounded-2xl p-6 w-full max-w-md z-10">

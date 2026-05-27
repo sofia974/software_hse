@@ -739,20 +739,97 @@ app.post("/api/publico/incidentes", upload.array("fotos"), async (req, res) => {
 ============================ */
 
 // GET: Listar incidentes filtrados por empresa
+// app.get("/api/incidentes", verifyToken, async (req, res) => {
+//   try {
+//     await poolConnect;
+
+//     // 1. Traemos incidentes con el nombre de la empresa
+//     const incidentes = await pool.request().query(`
+//       SELECT i.*, e.razonSocial AS nombreEmpresa
+//       FROM Incidentes i
+//       LEFT JOIN Empresas e ON i.idEmpresa = e.idEmpresa
+//       ORDER BY i.Codigo DESC
+//     `);
+
+//     // 2. Traemos todas las fotos (o podrías filtrarlas si fuera necesario)
+//     const fotos = await pool.request().query(`SELECT * FROM IncidenteFotos`);
+
+//     const resultado = incidentes.recordset.map((inc) => ({
+//       ...inc,
+//       fotos: fotos.recordset.filter((f) => f.IncidenteId === inc.Id),
+//     }));
+
+//     res.json(resultado);
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// });
 app.get("/api/incidentes", verifyToken, async (req, res) => {
   try {
     await poolConnect;
 
-    // 1. Traemos incidentes con el nombre de la empresa
-    const incidentes = await pool.request().query(`
-      SELECT i.*, e.razonSocial AS nombreEmpresa 
+    const { idNivelAcceso, idEmpresa: idEmpresaToken } = req.user;
+
+    const request = pool.request();
+
+    let whereClause = "";
+
+    // 🔥 SUPER ADMIN → VE TODO
+    if (idNivelAcceso === 1) {
+      whereClause = "";
+    }
+
+    // 🔥 ADMIN EMPRESA → EMPRESA + SUBEMPRESAS
+    else if (idNivelAcceso === 2) {
+      const empresasResult = await request.input(
+        "idEmpresa",
+        sql.Int,
+        idEmpresaToken,
+      ).query(`
+          SELECT idEmpresa
+          FROM Empresas
+          WHERE idEmpresa = @idEmpresa
+             OR idEmpresaPadre = @idEmpresa
+        `);
+
+      const ids = empresasResult.recordset.map((e) => e.idEmpresa);
+
+      if (ids.length === 0) {
+        return res.json([]);
+      }
+
+      const inParams = ids.map((_, i) => `@id${i}`).join(",");
+
+      ids.forEach((id, i) => {
+        request.input(`id${i}`, sql.Int, id);
+      });
+
+      whereClause = `WHERE i.idEmpresa IN (${inParams})`;
+    }
+
+    // 🔥 USUARIO NORMAL → SOLO SU EMPRESA
+    else {
+      request.input("idEmpresaUser", sql.Int, idEmpresaToken);
+
+      whereClause = `WHERE i.idEmpresa = @idEmpresaUser`;
+    }
+
+    // 🔥 INCIDENTES
+    const incidentes = await request.query(`
+      SELECT 
+        i.*, 
+        e.razonSocial AS nombreEmpresa
       FROM Incidentes i
-      LEFT JOIN Empresas e ON i.idEmpresa = e.idEmpresa
+      LEFT JOIN Empresas e 
+        ON i.idEmpresa = e.idEmpresa
+      ${whereClause}
       ORDER BY i.Codigo DESC
     `);
 
-    // 2. Traemos todas las fotos (o podrías filtrarlas si fuera necesario)
-    const fotos = await pool.request().query(`SELECT * FROM IncidenteFotos`);
+    // 🔥 FOTOS
+    const fotos = await pool.request().query(`
+      SELECT * FROM IncidenteFotos
+    `);
 
     const resultado = incidentes.recordset.map((inc) => ({
       ...inc,
@@ -761,7 +838,11 @@ app.get("/api/incidentes", verifyToken, async (req, res) => {
 
     res.json(resultado);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Error obteniendo incidentes:", err);
+
+    res.status(500).json({
+      error: err.message,
+    });
   }
 });
 
@@ -859,22 +940,82 @@ app.post(
 ============================ */
 app.get("/api/riesgos", verifyToken, async (req, res) => {
   try {
-    // Si quieres que aparezcan TODAS las empresas, eliminamos el filtro del WHERE
     await poolConnect;
-    // 1. Consulta principal con LEFT JOIN para asegurar que traiga el nombre así no tenga empresa
-    const riesgos = await pool.request().query(`
-        SELECT r.*, e.razonSocial AS nombreEmpresa 
-        FROM riesgos r
-        LEFT JOIN Empresas e ON r.idEmpresa = e.idEmpresa
-      `);
 
-    // 2. Para los controles, acciones, etc., también quitamos el filtro por empresa
-    const controles = await pool.request().query("SELECT * FROM controles");
-    const acciones = await pool.request().query("SELECT * FROM acciones");
-    const historial = await pool
-      .request()
-      .query("SELECT * FROM historial_riesgo");
-    const adjuntos = await pool.request().query("SELECT * FROM adjuntos");
+    const { idNivelAcceso, idEmpresa: idEmpresaToken } = req.user;
+
+    const request = pool.request();
+
+    let whereClause = "";
+
+    // 🔥 SUPER ADMIN
+    if (idNivelAcceso === 1) {
+      whereClause = "";
+    }
+
+    // 🔥 ADMIN EMPRESA
+    else if (idNivelAcceso === 2) {
+      const empresasResult = await request.input(
+        "idEmpresa",
+        sql.Int,
+        idEmpresaToken,
+      ).query(`
+          SELECT idEmpresa
+          FROM Empresas
+          WHERE idEmpresa = @idEmpresa
+             OR idEmpresaPadre = @idEmpresa
+        `);
+
+      const ids = empresasResult.recordset.map((e) => e.idEmpresa);
+
+      if (ids.length === 0) {
+        return res.json([]);
+      }
+
+      const inParams = ids.map((_, i) => `@id${i}`).join(",");
+
+      ids.forEach((id, i) => {
+        request.input(`id${i}`, sql.Int, id);
+      });
+
+      whereClause = `WHERE r.idEmpresa IN (${inParams})`;
+    }
+
+    // 🔥 USUARIO NORMAL
+    else {
+      request.input("idEmpresaUser", sql.Int, idEmpresaToken);
+
+      whereClause = `WHERE r.idEmpresa = @idEmpresaUser`;
+    }
+
+    // 🔥 RIESGOS
+    const riesgos = await request.query(`
+      SELECT 
+        r.*, 
+        e.razonSocial AS nombreEmpresa
+      FROM riesgos r
+      LEFT JOIN Empresas e 
+        ON r.idEmpresa = e.idEmpresa
+      ${whereClause}
+      ORDER BY r.id DESC
+    `);
+
+    // 🔥 DATOS RELACIONADOS
+    const controles = await pool.request().query(`
+      SELECT * FROM controles
+    `);
+
+    const acciones = await pool.request().query(`
+      SELECT * FROM acciones
+    `);
+
+    const historial = await pool.request().query(`
+      SELECT * FROM historial_riesgo
+    `);
+
+    const adjuntos = await pool.request().query(`
+      SELECT * FROM adjuntos
+    `);
 
     const result = riesgos.recordset.map((r) => {
       const controlesRiesgo = controles.recordset
@@ -895,12 +1036,18 @@ app.get("/api/riesgos", verifyToken, async (req, res) => {
       return {
         ...r,
         controles: controlesRiesgo,
+
         acciones: acciones.recordset.filter(
           (a) => Number(a.riesgo_id) === Number(r.id),
         ),
+
         historial: historial.recordset
           .filter((h) => Number(h.riesgo_id) === Number(r.id))
-          .map((h) => ({ at: h.fecha, msg: h.mensaje })),
+          .map((h) => ({
+            at: h.fecha,
+            msg: h.mensaje,
+          })),
+
         adjuntos: adjuntosRiesgo,
       };
     });
@@ -908,9 +1055,13 @@ app.get("/api/riesgos", verifyToken, async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error("Error obteniendo riesgos:", err);
-    res.status(500).json({ error: err.message });
+
+    res.status(500).json({
+      error: err.message,
+    });
   }
 });
+
 // Listar Matriz de Riesgos
 app.get("/api/configuracion-riesgo", verifyToken, async (req, res) => {
   try {
@@ -1538,16 +1689,21 @@ app.post("/api/checklists", verifyToken, async (req, res) => {
 app.get("/api/checklists", verifyToken, async (req, res) => {
   try {
     // CAMBIO CLAVE: Primero busca en la URL (query), si no hay, usa el token
-    const idEmpresa = req.query.idEmpresa || req.user.idEmpresa;
+    // const idEmpresa = req.query.idEmpresa || req.user.idEmpresa;
+    const idEmpresaUsuario = req.user.idEmpresa;
 
-    if (!idEmpresa) {
+    const idEmpresaBase = await obtenerEmpresaBase(idEmpresaUsuario);
+
+    if (!idEmpresaBase) {
       return res.status(400).json({ error: "No se especificó idEmpresa" });
     }
 
     await poolConnect;
     const result = await pool
       .request()
-      .input("idEmpresa", sql.Int, idEmpresa) // Ahora sí usará el '2' si lo envías
+      // .input("idEmpresa", sql.Int, idEmpresa)
+      .input("idEmpresa", sql.Int, idEmpresaBase)
+
       .query(
         `SELECT idChecklist as id, Nombre as nombre FROM Checklist WHERE idEmpresa = @idEmpresa ORDER BY Nombre`,
       );
@@ -1559,41 +1715,142 @@ app.get("/api/checklists", verifyToken, async (req, res) => {
 });
 
 // LISTAR INSPECCIONES (RESUMEN)
+// app.get("/api/inspections", verifyToken, async (req, res) => {
+//   try {
+//     await poolConnect;
+//     const result = await pool.request().query(`
+//         SELECT
+//           i.idInspeccion AS id,
+//           i.Fecha AS fecha,
+//           a.Nombre AS area,
+//           c.Nombre AS checklist,
+//           i.Responsable AS responsable,
+//           i.Estado AS status,
+//           i.PorcentajeCumplimiento AS cumplimiento,
+//           e.razonSocial AS nombreEmpresa,
+//           (SELECT COUNT(*) FROM Hallazgos h WHERE h.idInspeccion = i.idInspeccion AND h.Estado <> 'Cerrado') AS openFindings
+//         FROM Inspeccion i
+//         JOIN Areas a ON i.idArea = a.idArea
+//         JOIN Checklist c ON i.idChecklist = c.idChecklist
+//         LEFT JOIN Empresas e ON i.idEmpresa = e.idEmpresa
+//         ORDER BY i.idInspeccion DESC
+//       `);
+//     res.json(result.recordset);
+//   } catch (err) {
+//     console.error("Error en inspecciones:", err);
+//     res.status(500).json({ error: err.message });
+//   }
+// });
 app.get("/api/inspections", verifyToken, async (req, res) => {
   try {
     await poolConnect;
-    const result = await pool.request().query(`
-        SELECT 
-          i.idInspeccion AS id, 
-          i.Fecha AS fecha, 
-          a.Nombre AS area, 
-          c.Nombre AS checklist,
-          i.Responsable AS responsable, 
-          i.Estado AS status, 
-          i.PorcentajeCumplimiento AS cumplimiento,
-          e.razonSocial AS nombreEmpresa,
-          (SELECT COUNT(*) FROM Hallazgos h WHERE h.idInspeccion = i.idInspeccion AND h.Estado <> 'Cerrado') AS openFindings
-        FROM Inspeccion i
-        JOIN Areas a ON i.idArea = a.idArea
-        JOIN Checklist c ON i.idChecklist = c.idChecklist
-        LEFT JOIN Empresas e ON i.idEmpresa = e.idEmpresa
-        ORDER BY i.idInspeccion DESC
-      `);
+
+    const { idNivelAcceso, idEmpresa: idEmpresaToken } = req.user;
+
+    const request = pool.request();
+
+    let whereClause = "";
+
+    // 🔥 SUPER ADMIN
+    if (idNivelAcceso === 1) {
+      whereClause = "";
+    }
+
+    // 🔥 ADMIN EMPRESA
+    else if (idNivelAcceso === 2) {
+      const empresasResult = await request.input(
+        "idEmpresa",
+        sql.Int,
+        idEmpresaToken,
+      ).query(`
+          SELECT idEmpresa
+          FROM Empresas
+          WHERE idEmpresa = @idEmpresa
+             OR idEmpresaPadre = @idEmpresa
+        `);
+
+      const ids = empresasResult.recordset.map((e) => e.idEmpresa);
+
+      if (ids.length === 0) {
+        return res.json([]);
+      }
+
+      const inParams = ids.map((_, i) => `@id${i}`).join(",");
+
+      ids.forEach((id, i) => {
+        request.input(`id${i}`, sql.Int, id);
+      });
+
+      whereClause = `WHERE i.idEmpresa IN (${inParams})`;
+    }
+
+    // 🔥 USUARIO NORMAL
+    else {
+      request.input("idEmpresaUser", sql.Int, idEmpresaToken);
+
+      whereClause = `WHERE i.idEmpresa = @idEmpresaUser`;
+    }
+
+    // 🔥 CONSULTA
+    const result = await request.query(`
+      SELECT 
+        i.idInspeccion AS id, 
+        i.Fecha AS fecha, 
+        a.Nombre AS area, 
+        c.Nombre AS checklist,
+        i.Responsable AS responsable, 
+        i.Estado AS status, 
+        i.PorcentajeCumplimiento AS cumplimiento,
+        e.razonSocial AS nombreEmpresa,
+
+        (
+          SELECT COUNT(*)
+          FROM Hallazgos h
+          WHERE h.idInspeccion = i.idInspeccion
+            AND h.Estado <> 'Cerrado'
+        ) AS openFindings
+
+      FROM Inspeccion i
+
+      JOIN Areas a
+        ON i.idArea = a.idArea
+
+      JOIN Checklist c
+        ON i.idChecklist = c.idChecklist
+
+      LEFT JOIN Empresas e
+        ON i.idEmpresa = e.idEmpresa
+
+      ${whereClause}
+
+      ORDER BY i.idInspeccion DESC
+    `);
+
     res.json(result.recordset);
   } catch (err) {
     console.error("Error en inspecciones:", err);
-    res.status(500).json({ error: err.message });
+
+    res.status(500).json({
+      error: err.message,
+    });
   }
 });
 
 // LISTAR ÁREAS
 app.get("/api/areas", verifyToken, async (req, res) => {
   try {
-    const { idEmpresa } = req.user;
+    // Empresa del usuario logueado
+    const idEmpresaUsuario = req.user.idEmpresa;
+
+    // Obtener empresa base (padre si existe)
+    const idEmpresaBase = await obtenerEmpresaBase(idEmpresaUsuario);
+    // const { idEmpresa } = req.user;
+
     await poolConnect;
     const result = await pool
       .request()
-      .input("idEmpresa", sql.Int, idEmpresa)
+      // .input("idEmpresa", sql.Int, idEmpresa)
+      .input("idEmpresa", sql.Int, idEmpresaBase)
       .query(
         `SELECT idArea, Nombre FROM Areas WHERE idEmpresa = @idEmpresa ORDER BY Nombre`,
       );
@@ -2222,22 +2479,45 @@ app.get("/api/catalogs", verifyToken, async (req, res) => {
 // 4. LISTAR HISTORIAL DE IMPORTACIONES (Filtrado por Empresa)
 app.get("/api/importaciones", verifyToken, async (req, res) => {
   try {
-    // Si viene en la URL (?idEmpresa=3), usamos ese. Si no, el del token.
+    // Si viene por query usamos ese,
+    // si no usamos el del usuario logueado
     const idEmpresa = req.query.idEmpresa || req.user.idEmpresa;
 
     await poolConnect;
-    const result = await pool.request().input("idEmpresa", sql.Int, idEmpresa)
-      .query(`
-       SELECT i.*, e.razonSocial AS nombreEmpresa 
-        FROM Env_Importaciones i 
-        LEFT JOIN Empresas e 
-        ON i.idEmpresa = e.idEmpresa 
-        ORDER BY i.idImportacion DESC
-      `);
+
+    const request = pool.request();
+
+    let query = `
+      SELECT 
+        i.*, 
+        e.razonSocial AS nombreEmpresa
+      FROM Env_Importaciones i
+      LEFT JOIN Empresas e
+        ON i.idEmpresa = e.idEmpresa
+    `;
+
+    // Aplicar filtro SOLO si existe idEmpresa
+    if (idEmpresa) {
+      request.input("idEmpresa", sql.Int, idEmpresa);
+
+      query += `
+        WHERE i.idEmpresa = @idEmpresa
+      `;
+    }
+
+    query += `
+      ORDER BY i.idImportacion DESC
+    `;
+
+    const result = await request.query(query);
 
     res.json(result.recordset);
   } catch (err) {
-    res.status(500).json({ error: "Error obteniendo importaciones", err });
+    console.error("Error obteniendo importaciones:", err);
+
+    res.status(500).json({
+      error: "Error obteniendo importaciones",
+    });
   }
 });
 
@@ -2597,7 +2877,7 @@ app.delete("/api/residuos/documentos/:id", verifyToken, async (req, res) => {
   }
 });
 
-// ─── EMPRESAS (NUEVO) ────────────────────────────────────────────────────────
+// EMPRESAS (NUEVO)
 app.get("/api/admin/empresas", verifyToken, async (req, res) => {
   try {
     await poolConnect;
@@ -2628,10 +2908,16 @@ app.get("/api/admin/empresas", verifyToken, async (req, res) => {
             AND GETDATE() BETWEEN l.fechaInicio AND l.fechaFin
         ), 0) AS cantidadLicencias,
 
-        ISNULL((
-          SELECT COUNT(*)
-          FROM Personas p
-          WHERE p.idEmpresa = e.idEmpresa
+       ISNULL((
+            SELECT COUNT(*)
+            FROM LicenciasUsuarios lu
+            INNER JOIN usuarios_login ul
+                ON ul.id = lu.idUsuario
+            INNER JOIN Personas p
+                ON p.idPersona = ul.idPersona
+
+            WHERE p.idEmpresa = e.idEmpresa
+              AND lu.activo = 1
         ), 0) AS licenciasUsadas
 
       FROM Empresas e
@@ -2699,22 +2985,32 @@ app.get("/api/empresas", verifyToken, async (req, res) => {
             AND GETDATE() BETWEEN l.fechaInicio AND l.fechaFin
         ), 0) AS licenciasTotales,
 
-        -- USUARIOS USADOS
-        ISNULL((
-          SELECT COUNT(*)
-          FROM Personas p
-          WHERE p.idEmpresa = e.idEmpresa
-        ), 0) AS licenciasUsadas
+        -- LICENCIAS USADAS REALES
+ISNULL((
+    SELECT COUNT(*)
+
+    FROM LicenciasUsuarios lu
+
+    INNER JOIN usuarios_login ul
+        ON ul.id = lu.idUsuario
+
+    INNER JOIN Personas p
+        ON p.idPersona = ul.idPersona
+
+    WHERE p.idEmpresa = e.idEmpresa
+      AND lu.activo = 1
+
+), 0) AS licenciasUsadas
 
       FROM Empresas e
     `;
 
-    // 🔥 SUPER ADMIN VE TODO
+    // SUPER ADMIN VE TODO
     if (idNivelAcceso === 1) {
       // sin filtro
     }
 
-    // 🔥 ADMIN EMPRESA VE SU GRUPO
+    // ADMIN EMPRESA VE SU GRUPO
     else if (idNivelAcceso === 2) {
       query += `
         WHERE e.idEmpresa = @idEmpresa
@@ -2723,7 +3019,7 @@ app.get("/api/empresas", verifyToken, async (req, res) => {
       request.input("idEmpresa", sql.Int, idEmpresa);
     }
 
-    // 🔒 OTROS NO VEN NADA
+    // OTROS NO VEN NADA
     else {
       return res.status(403).json({
         error: "No autorizado para este recurso",
@@ -3039,46 +3335,59 @@ app.get(
     try {
       await poolConnect;
 
-      // 🔥 1. Licencia directa
-      const licDirecta = await pool
+      // 1. Licencia directa
+      let totalPermitido = 0;
+      const distribucion = await pool
         .request()
         .input("idEmpresa", sql.Int, idEmpresa).query(`
-          SELECT TOP 1 l.idLicencia, l.cantidadUsuarios
-          FROM Licencias l
-          WHERE l.idEmpresa = @idEmpresa
-            AND l.activo = 1
-            AND GETDATE() BETWEEN l.fechaInicio AND l.fechaFin
-        `);
+    SELECT TOP 1
+      ld.cantidadAsignada
+    FROM LicenciasDistribucion ld
 
-      let totalPermitido = 0;
+    INNER JOIN Licencias l
+      ON l.idLicencia = ld.idLicencia
 
-      if (licDirecta.recordset.length > 0) {
-        totalPermitido = licDirecta.recordset[0].cantidadUsuarios;
+    WHERE ld.idEmpresa = @idEmpresa
+      AND l.activo = 1
+      AND GETDATE()
+          BETWEEN l.fechaInicio AND l.fechaFin
+  `);
+
+      // 🔥 SI EXISTE DISTRIBUCIÓN
+      if (distribucion.recordset.length > 0) {
+        totalPermitido = distribucion.recordset[0].cantidadAsignada;
       } else {
-        // 🔥 2. Licencia distribuida
-        const licDistribuida = await pool
+        // 🔥 LICENCIA DIRECTA
+        const licDirecta = await pool
           .request()
           .input("idEmpresa", sql.Int, idEmpresa).query(`
-            SELECT ISNULL(SUM(ld.cantidadAsignada), 0) as total
-            FROM LicenciasDistribucion ld
-            JOIN Licencias l ON l.idLicencia = ld.idLicencia
-            WHERE ld.idEmpresa = @idEmpresa
-              AND l.activo = 1
-              AND GETDATE() BETWEEN l.fechaInicio AND l.fechaFin
-          `);
+      SELECT TOP 1
+        cantidadUsuarios
+      FROM Licencias
+      WHERE idEmpresa = @idEmpresa
+        AND activo = 1
+        AND GETDATE()
+            BETWEEN fechaInicio AND fechaFin
+    `);
 
-        totalPermitido = licDistribuida.recordset[0].total;
+        totalPermitido = licDirecta.recordset[0]?.cantidadUsuarios || 0;
       }
-
-      // 🔥 3. Usuarios actuales
       const usuarios = await pool
         .request()
         .input("idEmpresa", sql.Int, idEmpresa).query(`
-          SELECT COUNT(*) as total
-          FROM Personas
-          WHERE idEmpresa = @idEmpresa
-            AND activo = 1
-        `);
+    SELECT COUNT(*) as total
+
+    FROM LicenciasUsuarios lu
+
+    INNER JOIN usuarios_login ul
+      ON ul.id = lu.idUsuario
+
+    INNER JOIN Personas p
+      ON p.idPersona = ul.idPersona
+
+    WHERE p.idEmpresa = @idEmpresa
+      AND lu.activo = 1
+`);
 
       const usados = usuarios.recordset[0].total;
 
@@ -3095,119 +3404,6 @@ app.get(
     }
   },
 );
-// app.post("/api/usuarios-con-licencia", verifyToken, async (req, res) => {
-//   const {
-//     nombre,
-//     idArea,
-//     idRol,
-//     username,
-//     email,
-//     password,
-//     activo,
-//     idEmpresa,
-//   } = req.body;
-
-//   const transaction = new sql.Transaction(pool);
-
-//   try {
-//     await transaction.begin();
-
-//     const idEmpresaFinal = Number(idEmpresa);
-
-//     // 🔥 1. VALIDAR LICENCIA (MISMA LÓGICA QUE TU GET)
-//     let totalPermitido = 0;
-
-//     // licencia directa
-//     const licDirecta = await transaction
-//       .request()
-//       .input("idEmpresa", sql.Int, idEmpresaFinal).query(`
-//         SELECT TOP 1 cantidadUsuarios
-//         FROM Licencias
-//         WHERE idEmpresa = @idEmpresa
-//           AND activo = 1
-//           AND GETDATE() BETWEEN fechaInicio AND fechaFin
-//       `);
-
-//     if (licDirecta.recordset.length > 0) {
-//       totalPermitido = licDirecta.recordset[0].cantidadUsuarios;
-//     } else {
-//       // licencia distribuida
-//       const licDistribuida = await transaction
-//         .request()
-//         .input("idEmpresa", sql.Int, idEmpresaFinal).query(`
-//           SELECT ISNULL(SUM(ld.cantidadAsignada), 0) as total
-//           FROM LicenciasDistribucion ld
-//           JOIN Licencias l ON l.idLicencia = ld.idLicencia
-//           WHERE ld.idEmpresa = @idEmpresa
-//             AND l.activo = 1
-//             AND GETDATE() BETWEEN l.fechaInicio AND l.fechaFin
-//         `);
-
-//       totalPermitido = licDistribuida.recordset[0].total;
-//     }
-
-//     if (totalPermitido === 0) {
-//       throw new Error("Empresa sin licencias asignadas");
-//     }
-
-//     // 🔥 2. USUARIOS ACTUALES
-//     const usuarios = await transaction
-//       .request()
-//       .input("idEmpresa", sql.Int, idEmpresaFinal).query(`
-//         SELECT COUNT(*) as total
-//         FROM Personas
-//         WHERE idEmpresa = @idEmpresa
-//           AND activo = 1
-//       `);
-
-//     const usados = usuarios.recordset[0].total;
-
-//     if (usados >= totalPermitido) {
-//       throw new Error("Límite de licencias alcanzado");
-//     }
-
-//     // 🔥 3. CREAR USUARIO
-//     const hash = await bcrypt.hash(password, 10);
-
-//     const personaRes = await transaction
-//       .request()
-//       .input("nombre", sql.VarChar, nombre)
-//       .input("idArea", sql.Int, idArea || null)
-//       .input("idRol", sql.Int, idRol)
-//       .input("idEmpresa", sql.Int, idEmpresaFinal)
-//       .input("activo", sql.Bit, activo ? 1 : 0).query(`
-//         INSERT INTO Personas (nombre, idArea, idRol, idEmpresa, activo)
-//         VALUES (@nombre, @idArea, @idRol, @idEmpresa, @activo);
-//         SELECT SCOPE_IDENTITY() AS idPersona;
-//       `);
-
-//     const idPersona = personaRes.recordset[0].idPersona;
-
-//     await transaction
-//       .request()
-//       .input("username", sql.NVarChar, username)
-//       .input("email", sql.NVarChar, email)
-//       .input("password_hash", sql.NVarChar, hash)
-//       .input("is_active", sql.Bit, activo ? 1 : 0)
-//       .input("idPersona", sql.Int, idPersona)
-//       .input("idNivelAcceso", sql.Int, 3).query(`
-//         INSERT INTO usuarios_login
-//         (username, email, password_hash, is_active, is_verified, idPersona, idNivelAcceso, created_at)
-//         VALUES
-//         (@username, @email, @password_hash, @is_active, 1, @idPersona, @idNivelAcceso, GETDATE())
-//       `);
-
-//     await transaction.commit();
-
-//     res.json({
-//       ok: true,
-//       message: "Usuario creado correctamente",
-//     });
-//   } catch (err) {
-//     await transaction.rollback();
-//     res.status(500).json({ error: err.message });
-//   }
-// });
 app.post("/api/usuarios-con-licencia", verifyToken, async (req, res) => {
   const {
     nombre,
@@ -3294,7 +3490,20 @@ app.post("/api/usuarios-con-licencia", verifyToken, async (req, res) => {
 
     const idPersona = personaRes.recordset[0].idPersona;
 
-    await transaction
+    // await transaction
+    //   .request()
+    //   .input("username", sql.NVarChar, username)
+    //   .input("email", sql.NVarChar, email)
+    //   .input("password_hash", sql.NVarChar, hash)
+    //   .input("is_active", sql.Bit, activo ? 1 : 0)
+    //   .input("idPersona", sql.Int, idPersona)
+    //   .input("idNivelAcceso", sql.Int, 3).query(`
+    //     INSERT INTO usuarios_login
+    //     (username, email, password_hash, is_active, is_verified, idPersona, idNivelAcceso, created_at)
+    //     VALUES
+    //     (@username, @email, @password_hash, @is_active, 1, @idPersona, @idNivelAcceso, GETDATE())
+    //   `);
+    const userRes = await transaction
       .request()
       .input("username", sql.NVarChar, username)
       .input("email", sql.NVarChar, email)
@@ -3302,12 +3511,93 @@ app.post("/api/usuarios-con-licencia", verifyToken, async (req, res) => {
       .input("is_active", sql.Bit, activo ? 1 : 0)
       .input("idPersona", sql.Int, idPersona)
       .input("idNivelAcceso", sql.Int, 3).query(`
-        INSERT INTO usuarios_login 
-        (username, email, password_hash, is_active, is_verified, idPersona, idNivelAcceso, created_at)
-        VALUES 
-        (@username, @email, @password_hash, @is_active, 1, @idPersona, @idNivelAcceso, GETDATE())
-      `);
+    INSERT INTO usuarios_login 
+    (
+      username,
+      email,
+      password_hash,
+      is_active,
+      is_verified,
+      idPersona,
+      idNivelAcceso,
+      created_at
+    )
+    VALUES 
+    (
+      @username,
+      @email,
+      @password_hash,
+      @is_active,
+      1,
+      @idPersona,
+      @idNivelAcceso,
+      GETDATE()
+    );
 
+    SELECT SCOPE_IDENTITY() AS idUsuario;
+  `);
+
+    const idUsuario = userRes.recordset[0].idUsuario;
+    // 🔥 OBTENER LICENCIA DE LA EMPRESA
+
+    let idLicencia = null;
+
+    // LICENCIA DIRECTA
+    const licDirectaUsuario = await transaction
+      .request()
+      .input("idEmpresa", sql.Int, idEmpresaFinal).query(`
+    SELECT TOP 1 idLicencia
+    FROM Licencias
+    WHERE idEmpresa = @idEmpresa
+      AND activo = 1
+      AND GETDATE() BETWEEN fechaInicio AND fechaFin
+  `);
+
+    if (licDirectaUsuario.recordset.length > 0) {
+      idLicencia = licDirectaUsuario.recordset[0].idLicencia;
+    } else {
+      // LICENCIA DISTRIBUIDA
+      const licDistribuidaUsuario = await transaction
+        .request()
+        .input("idEmpresa", sql.Int, idEmpresaFinal).query(`
+      SELECT TOP 1 ld.idLicencia
+      FROM LicenciasDistribucion ld
+      JOIN Licencias l
+        ON l.idLicencia = ld.idLicencia
+      WHERE ld.idEmpresa = @idEmpresa
+        AND l.activo = 1
+        AND GETDATE() BETWEEN l.fechaInicio AND l.fechaFin
+    `);
+
+      if (licDistribuidaUsuario.recordset.length > 0) {
+        idLicencia = licDistribuidaUsuario.recordset[0].idLicencia;
+      }
+    }
+
+    // ASIGNAR LICENCIA AL USUARIO
+
+    if (idLicencia) {
+      await transaction
+        .request()
+        .input("idLicencia", sql.Int, idLicencia)
+        .input("idUsuario", sql.Int, idUsuario)
+        .input("activo", sql.Bit, 1).query(`
+      INSERT INTO LicenciasUsuarios
+      (
+        idLicencia,
+        idUsuario,
+        fechaAsignacion,
+        activo
+      )
+      VALUES
+      (
+        @idLicencia,
+        @idUsuario,
+        GETDATE(),
+        @activo
+      )
+    `);
+    }
     // 🔥 4. OBTENER DATOS PARA UI
     const empresaRes = await transaction
       .request()
@@ -3398,10 +3688,14 @@ app.post("/api/admin/usuarios", verifyToken, async (req, res) => {
 });
 
 // REGISTRAR ÁREA
-// Asegúrate de que diga app.post y NO algo como pp.post o aapp.post
 app.post("/api/areas", verifyToken, async (req, res) => {
   try {
     const { Nombre, idEmpresa } = req.body;
+    // Empresa usuario
+    const idEmpresaUsuario = req.user.idEmpresa;
+
+    // Obtener empresa base
+    const idEmpresaBase = await obtenerEmpresaBase(idEmpresaUsuario);
 
     // Validación simple para evitar errores de SQL
     if (!Nombre || !idEmpresa) {
@@ -3413,7 +3707,8 @@ app.post("/api/areas", verifyToken, async (req, res) => {
     await poolConnect;
     await pool
       .request()
-      .input("idEmpresa", sql.Int, idEmpresa)
+      // .input("idEmpresa", sql.Int, idEmpresa)
+      .input("idEmpresa", sql.Int, idEmpresaBase)
       .input("Nombre", sql.NVarChar, Nombre)
       .query(
         "INSERT INTO Areas (Nombre, idEmpresa) VALUES (@Nombre, @idEmpresa)",
@@ -3452,11 +3747,16 @@ app.delete(
 // --- MATRIZ DE PELIGROS ---
 app.get("/api/riesgos-peligro", verifyToken, async (req, res) => {
   try {
-    const { idEmpresa } = req.query;
+    const idEmpresaUsuario = req.user.idEmpresa;
+
+    const idEmpresaBase = await obtenerEmpresaBase(idEmpresaUsuario);
+
+    // const { idEmpresa } = req.query;
     await poolConnect; // Asegura la conexión
     const result = await pool
       .request()
-      .input("idEmpresa", sql.Int, idEmpresa)
+      // .input("idEmpresa", sql.Int, idEmpresa)
+      .input("idEmpresa", sql.Int, idEmpresaBase)
       // Cambio: tabla 'riesgosPeligro'
       .query("SELECT * FROM riesgosPeligro WHERE idEmpresa = @idEmpresa");
     res.json(result.recordset);
@@ -3486,11 +3786,15 @@ app.post("/api/riesgos-peligro", verifyToken, async (req, res) => {
 // --- RUTAS PARA JERARQUÍA ---
 app.get("/api/riesgos-jerarquia", verifyToken, async (req, res) => {
   try {
-    const { idEmpresa } = req.query;
+    // const { idEmpresa } = req.query;
+    const idEmpresaUsuario = req.user.idEmpresa;
+
+    const idEmpresaBase = await obtenerEmpresaBase(idEmpresaUsuario);
     await poolConnect;
     const result = await pool
       .request()
-      .input("idEmpresa", sql.Int, idEmpresa)
+      // .input("idEmpresa", sql.Int, idEmpresa)
+      .input("idEmpresa", sql.Int, idEmpresaBase)
       // Cambio: tabla 'riesgosJerarquia'
       .query(
         "SELECT * FROM riesgosJerarquia WHERE idEmpresa = @idEmpresa ORDER BY idJerarquia ASC",
@@ -3521,65 +3825,6 @@ app.post("/api/riesgos-jerarquia", verifyToken, async (req, res) => {
 });
 
 // Crear una nueva empresa
-
-// app.post("/api/admin/empresas", verifyToken, async (req, res) => {
-//   const { nombre, ruc, direccion, idUsuarioAdmin } = req.body;
-
-//   try {
-//     await poolConnect;
-
-//     // 🔒 SOLO SUPER ADMIN
-//     if (req.user.nivel !== "SUPER_ADMIN") {
-//       return res.status(403).json({ error: "No autorizado" });
-//     }
-
-//     if (!nombre || !ruc) {
-//       return res.status(400).json({ error: "Faltan datos" });
-//     }
-
-//     // 1. Crear empresa principal
-//     const result = await pool
-//       .request()
-//       .input("razonSocial", sql.NVarChar(200), nombre)
-//       .input("ruc", sql.NVarChar(20), ruc)
-//       .input("direccion", sql.NVarChar(200), direccion).query(`
-//         INSERT INTO Empresas (razonSocial, ruc, activo, fechaRegistro, direccion, idEmpresaPadre)
-//         OUTPUT INSERTED.idEmpresa
-//         VALUES (@razonSocial, @ruc, 1, GETDATE(), @direccion, NULL)
-//       `);
-
-//     const idEmpresa = result.recordset[0].idEmpresa;
-
-//     // 2. Si viene un usuario → asignarlo como ADMIN_EMPRESA
-//     if (idUsuarioAdmin) {
-//       await pool
-//         .request()
-//         .input("idUsuario", sql.Int, idUsuarioAdmin)
-//         .input("idEmpresa", sql.Int, idEmpresa).query(`
-//           UPDATE u
-//           SET u.nivel_acceso = 'ADMIN_EMPRESA'
-//           FROM usuarios_login u
-//           WHERE u.id = @idUsuario
-//         `);
-
-//       await pool
-//         .request()
-//         .input("idUsuario", sql.Int, idUsuarioAdmin)
-//         .input("idEmpresa", sql.Int, idEmpresa).query(`
-//           UPDATE p
-//           SET p.idEmpresa = @idEmpresa
-//           FROM Personas p
-//           INNER JOIN usuarios_login u ON u.idPersona = p.idPersona
-//           WHERE u.id = @idUsuario
-//         `);
-//     }
-
-//     res.json({ ok: true, idEmpresa });
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ error: err.message });
-//   }
-// });
 app.post("/api/admin/empresas", verifyToken, async (req, res) => {
   const { nombre, ruc, direccion, idUsuarioAdmin } = req.body;
 
@@ -4076,6 +4321,29 @@ app.get("/api/reportes/residuos", verifyToken, async (req, res) => {
     res.status(500).json({ error: "Error en reportes residuos" });
   }
 });
+
+// CONFIGURACION DEL ADMINISTRADOR EMPRESA
+async function obtenerEmpresaBase(idEmpresa) {
+  await poolConnect;
+
+  const result = await pool.request().input("idEmpresa", sql.Int, idEmpresa)
+    .query(`
+      SELECT idEmpresaPadre
+      FROM Empresas
+      WHERE idEmpresa = @idEmpresa
+    `);
+
+  const empresa = result.recordset[0];
+
+  // Si es subempresa -> usar padre
+  if (empresa?.idEmpresaPadre) {
+    return empresa.idEmpresaPadre;
+  }
+
+  // Si es empresa principal
+  return idEmpresa;
+}
+
 /* ============================
    INICIO DEL SERVIDOR
 ============================ */

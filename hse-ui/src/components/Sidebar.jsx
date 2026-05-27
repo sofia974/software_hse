@@ -229,29 +229,18 @@ export default function Sidebar({ page, setPage, user, onLogout }) {
     user?.nivel_acceso === "SUPER_ADMIN" || user?.idNivelAcceso === 1;
 
   const permisos = user?.permisos || [];
-  let items = [
-    "Dashboard",
-    ...permisos.map((p) => p.nombre).filter((n) => n !== "Dashboard"),
-  ];
+  // let items = [
+  //   "Dashboard",
+  //   ...permisos.map((p) => p.nombre).filter((n) => n !== "Dashboard"),
+  // ];
+  let items = permisos.map((p) => p.nombre);
 
   // SOLO SUPER ADMIN ve este módulo
   if (isSuperAdmin) {
     items.push("Superadministrador");
   }
-
   // elimina duplicados
   items = [...new Set(items)];
-  // let items = [
-  //   "Dashboard",
-  //   ...permisos.map((p) => p.nombre).filter((n) => n !== "Dashboard"),
-  // ];
-
-  // if (user?.nivel === "SUPER_ADMIN") {
-  //   items.push("Superadministrador");
-  // }
-  // // 🔥 elimina duplicados
-  // items = [...new Set(items)];
-
   const initials = (storedUser.username || "U")
     .split("@")[0]
     .split(/[\s._-]/)

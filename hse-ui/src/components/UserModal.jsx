@@ -16,7 +16,7 @@ const UserModal = ({ data, onClose }) => {
               Gestión de personal y accesos al sistema
             </p>
           </div>
-          <button
+          {/* <button
             onClick={onClose}
             className="p-2 hover:bg-red-50 hover:text-red-500 rounded-full transition-all text-slate-400"
           >
@@ -33,7 +33,7 @@ const UserModal = ({ data, onClose }) => {
                 d="M6 18L18 6M6 6l12 12"
               />
             </svg>
-          </button>
+          </button> */}
         </div>
 
         {/* Tabla de Usuarios */}
@@ -62,11 +62,8 @@ const UserModal = ({ data, onClose }) => {
                     key={u.id}
                     className="hover:bg-blue-50/30 transition-colors"
                   >
-                    {/* Usuario e Email */}
-                    {/* Usuario e Email */}
                     <td className="px-4 py-4">
                       <div className="flex flex-col">
-                        {/* Verifica que sea 'username' en minúsculas como en el SQL */}
                         <span className="font-bold text-slate-800">
                           {u.username}
                         </span>
@@ -76,7 +73,6 @@ const UserModal = ({ data, onClose }) => {
                       </div>
                     </td>
 
-                    {/* Rol y Nivel de Acceso */}
                     <td className="px-4 py-4">
                       <div className="flex flex-col">
                         <span className="font-semibold text-slate-700">
@@ -88,10 +84,8 @@ const UserModal = ({ data, onClose }) => {
                       </div>
                     </td>
 
-                    {/* Módulos Permitidos */}
                     <td className="px-4 py-4">
                       <div className="flex flex-wrap gap-1 max-w-[300px]">
-                        {/* IMPORTANTE: Usar 'modulos_nombres' que viene del STRING_AGG */}
                         {u.modulos_nombres ? (
                           u.modulos_nombres.split(", ").map((mod, idx) => (
                             <span
@@ -138,7 +132,7 @@ const UserModal = ({ data, onClose }) => {
         <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
           <button
             onClick={onClose}
-            className="px-8 py-2.5 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition-all font-bold text-xs uppercase tracking-widest shadow-lg"
+            className="px-8 py-2.5 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition-all font-bold text-sm tracking-widest shadow-lg"
           >
             Cerrar Panel
           </button>

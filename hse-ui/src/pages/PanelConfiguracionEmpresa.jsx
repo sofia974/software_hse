@@ -8,7 +8,7 @@ export default function ConfiguracionEmpresa({ empresa, onBack }) {
   const token =
     localStorage.getItem("token") || sessionStorage.getItem("token");
 
-  // --- ESTADO CENTRALIZADO DE DATOS ---
+  // ESTADO CENTRALIZADO DE DATOS
   const [data, setData] = useState({
     areas: [],
     peligros: [],
@@ -18,7 +18,7 @@ export default function ConfiguracionEmpresa({ empresa, onBack }) {
     roles: [],
   });
 
-  // --- ESTADO DE FORMULARIOS ---
+  // ESTADO DE FORMULARIOS
   const [formData, setFormData] = useState({
     areaNom: "",
     pTipo: "",
@@ -43,7 +43,7 @@ export default function ConfiguracionEmpresa({ empresa, onBack }) {
     fetchDatosEmpresa();
   }, [empresa?.idEmpresa]);
 
-  // --- CARGA DE DATOS (API) ---
+  // CARGA DE DATOS (API)
   const fetchDatosEmpresa = useCallback(async () => {
     if (!empresa?.idEmpresa) return;
     setLoading(true);
@@ -55,18 +55,15 @@ export default function ConfiguracionEmpresa({ empresa, onBack }) {
         fetch(`http://localhost:4000/api${path}`, { headers })
           .then((res) => (res.ok ? res.json() : []))
           .catch(() => []);
-
-      // CAMBIO CRÍTICO: Usar la ruta específica por empresa para Áreas
       const [areas, peligros, jerarquias, checklists, cursos, roles] =
         await Promise.all([
-          api(`/empresas/${empresa.idEmpresa}/areas`), // <--- Ruta corregida
-          api(`/riesgos-peligro?idEmpresa=${empresa.idEmpresa}`),
-          api(`/riesgos-jerarquia?idEmpresa=${empresa.idEmpresa}`),
-          api(`/checklists?idEmpresa=${empresa.idEmpresa}`),
-          api(`/cursos?idEmpresa=${empresa.idEmpresa}`),
+          api(`/areas`),
+          api(`/riesgos-peligro`),
+          api(`/riesgos-jerarquia`),
+          api(`/checklists`),
+          api(`/cursos`),
           api(`/roles`),
         ]);
-
       setData({ areas, peligros, jerarquias, checklists, cursos, roles });
     } catch (e) {
       console.error("Error cargando configuración:", e);
@@ -78,8 +75,7 @@ export default function ConfiguracionEmpresa({ empresa, onBack }) {
   useEffect(() => {
     fetchDatosEmpresa();
   }, [fetchDatosEmpresa]);
-
-  // --- ACCIONES GENÉRICAS (POST, DELETE, etc.) ---
+  // ACCIONES GENÉRICAS (POST, DELETE, etc.)
   const handleAction = async (method, endpoint, payload = null) => {
     try {
       const cleanEndpoint = endpoint.replace(/^\//, "");
@@ -94,7 +90,7 @@ export default function ConfiguracionEmpresa({ empresa, onBack }) {
       if (payload) {
         config.body = JSON.stringify({
           ...payload,
-          idEmpresa: empresa.idEmpresa, // Esto evita que se guarde en la empresa 1 por defecto
+          idEmpresa: empresa.idEmpresa,
         });
       }
 
@@ -102,14 +98,12 @@ export default function ConfiguracionEmpresa({ empresa, onBack }) {
         `http://localhost:4000/api/${cleanEndpoint}`,
         config,
       );
-
       // PRIMERO: Verificamos si la respuesta es JSON antes de parsear
       const contentType = res.headers.get("content-type");
       if (res.ok) {
         await fetchDatosEmpresa();
         return true;
       } else {
-        // Si no es OK y es HTML, es un error de ruta (404)
         if (contentType && contentType.indexOf("application/json") !== -1) {
           const errorData = await res.json();
           alert(
@@ -128,7 +122,7 @@ export default function ConfiguracionEmpresa({ empresa, onBack }) {
     return false;
   };
 
-  // --- HANDLERS ESPECÍFICOS ---
+  // HANDLERS ESPECÍFICOS
   // Función para registrar
   const agregarArea = async () => {
     if (!formData.areaNom.trim()) return;
@@ -146,10 +140,11 @@ export default function ConfiguracionEmpresa({ empresa, onBack }) {
     if (!confirm("¿Seguro que quieres eliminar esta área?")) return;
 
     // Llamamos al endpoint: /empresas/1/areas/5
-    await handleAction(
-      "DELETE",
-      `empresas/${empresa.idEmpresa}/areas/${idArea}`,
-    );
+    // await handleAction(
+    //   "DELETE",
+    //   `empresas/${empresa.idEmpresa}/areas/${idArea}`,
+    // );
+    await handleAction("DELETE", `areas/${idArea}`);
   };
 
   // FUNCION PARA REGISTRAR RIESGO - PELIGRO
@@ -176,7 +171,7 @@ export default function ConfiguracionEmpresa({ empresa, onBack }) {
 
   //INSPECCIONES
 
-  // --- MEMOS PARA FILTRADO ---
+  // MEMOS PARA FILTRADO
   const filteredAreas = useMemo(() => {
     return data.areas.filter((a) =>
       a.Nombre?.toLowerCase().includes(areaSearch.toLowerCase()),
@@ -421,54 +416,6 @@ export default function ConfiguracionEmpresa({ empresa, onBack }) {
             )}
 
             {/* TAB: INSPECCIÓN */}
-            {/* {activeTab === "inspeccion" && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center px-2">
-                  <h3 className="font-bold text-slate-800">
-                    Checklists de Empresa
-                  </h3>
-                  <button
-                    onClick={() =>
-                      setFormData({ ...formData, showChecklistModal: true })
-                    }
-                    className="bg-green-600 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm"
-                  >
-                    {" "}
-                    + Nuevo Checklist{" "}
-                  </button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {data.checklists.map((c) => (
-                    <div
-                      key={c.id}
-                      className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center"
-                    >
-                      <div>
-                        <p className="font-bold text-slate-700 text-sm">
-                          {c.nombre}
-                        </p>
-                        <p className="text-[10px] text-slate-400 font-mono">
-                          ID: {c.id}
-                        </p>
-                      </div>
-                      <span className="text-lg">📋</span>
-                    </div>
-                  ))}
-                </div>
-                <ModalCrearChecklist
-                  open={formData.showChecklistModal}
-                  onClose={() =>
-                    setFormData({ ...formData, showChecklistModal: false })
-                  }
-                  onSave={() => {
-                    fetchDatosEmpresa();
-                    setFormData({ ...formData, showChecklistModal: false });
-                  }}
-                />
-              </div>
-            )} */}
-
-            {/* TAB: INSPECCIÓN */}
             {activeTab === "inspeccion" && (
               <div className="space-y-6 animate-in fade-in duration-500">
                 <div className="flex justify-between items-center px-2">
@@ -600,19 +547,7 @@ export default function ConfiguracionEmpresa({ empresa, onBack }) {
                     </div>
                   )}
                 </div>
-
-                {/* Modal de Creación */}
-                {/* <ModalCrearChecklist
-                  open={formData.showChecklistModal}
-                  onClose={() =>
-                    setFormData({ ...formData, showChecklistModal: false })
-                  }
-                  onSave={() => {
-                    fetchDatosEmpresa();
-                    setFormData({ ...formData, showChecklistModal: false });
-                  }}
-                  idEmpresa={empresa.idEmpresa} // Importante pasar el ID actual al modal
-                /> */}
+                {/* <ModalCrearChecklist*/}
                 <ModalCrearChecklistAdmin
                   open={formData.showChecklistModal}
                   onClose={() =>

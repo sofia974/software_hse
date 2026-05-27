@@ -179,13 +179,41 @@ export default function Environment() {
   const [empresaFiltro, setEmpresaFiltro] = useState(""); // Empresa seleccionada en el dashboard
 
   // 1. Modifica loadImportaciones para que acepte el ID
-  async function loadImportaciones(idEmpresaSeleccionada) {
+  // async function loadImportaciones(idEmpresaSeleccionada) {
+  //   try {
+  //     const token =
+  //       localStorage.getItem("token") || sessionStorage.getItem("token");
+
+  //     // Añadimos el idEmpresa como query parameter
+  //     let url = "http://localhost:4000/api/importaciones";
+  //     if (idEmpresaSeleccionada) {
+  //       url += `?idEmpresa=${idEmpresaSeleccionada}`;
+  //     }
+
+  //     const res = await fetch(url, {
+  //       method: "GET",
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //         "Content-Type": "application/json",
+  //       },
+  //     });
+
+  //     if (!res.ok) throw new Error(`Error: ${res.status}`);
+
+  //     const data = await res.json();
+  //     setImportaciones(Array.isArray(data) ? data : []);
+  //   } catch (err) {
+  //     console.error("Error cargando importaciones:", err);
+  //     setImportaciones([]);
+  //   }
+  // }
+  async function loadImportaciones(idEmpresaSeleccionada = null) {
     try {
       const token =
         localStorage.getItem("token") || sessionStorage.getItem("token");
 
-      // Añadimos el idEmpresa como query parameter
       let url = "http://localhost:4000/api/importaciones";
+
       if (idEmpresaSeleccionada) {
         url += `?idEmpresa=${idEmpresaSeleccionada}`;
       }
@@ -198,12 +226,16 @@ export default function Environment() {
         },
       });
 
-      if (!res.ok) throw new Error(`Error: ${res.status}`);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
 
       const data = await res.json();
+
       setImportaciones(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Error cargando importaciones:", err);
+
       setImportaciones([]);
     }
   }
@@ -269,34 +301,12 @@ export default function Environment() {
       console.error("Error guardando muestra:", err);
     }
   }
-
   // 1. CARGAR EMPRESAS AL INICIAR
   useEffect(() => {
     fetchEmpresas();
+    // Trae toda las importaciones
     if (typeof loadImportaciones === "function") loadImportaciones();
   }, []);
-  // Función para cargar importaciones cuando cambia la empresa
-  useEffect(() => {
-    if (empresaFiltro) {
-      cargarImportacionesPorEmpresa(empresaFiltro);
-    } else {
-      setImportaciones([]); // Si no hay empresa, limpiamos las importaciones
-      setImportacionSeleccionada("");
-    }
-  }, [empresaFiltro]);
-  const cargarImportacionesPorEmpresa = async (id) => {
-    try {
-      const token =
-        localStorage.getItem("token") || sessionStorage.getItem("token");
-      const res = await fetch(`http://localhost:4000/api/importaciones/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setImportaciones(data);
-    } catch (err) {
-      console.error("Error al cargar importaciones:", err);
-    }
-  };
   const fetchEmpresas = async () => {
     try {
       const token =
@@ -786,8 +796,6 @@ export default function Environment() {
       {/* El contenedor principal ya no usa grid-cols-12 para evitar el desbordamiento rígido */}
       <div className="flex flex-col gap-4 p-4 rounded-2xl bg-white border border-slate-100 shadow-sm">
         {/* CONTENEDOR DE FILTROS Y ACCIONES */}
-        {/* 'xl:flex-nowrap' asegura que en monitores grandes esté todo alineado, 
-        pero en laptops/tablets permite el salto de línea (wrap) */}
         <div className="flex flex-wrap xl:flex-nowrap items-start justify-between gap-6">
           {/* COLUMNA IZQUIERDA: Selectores de Empresa e Importación */}
           <div className="flex flex-col gap-2 w-full lg:w-auto flex-shrink-0">
@@ -803,7 +811,7 @@ export default function Environment() {
                 }}
                 className="w-full sm:w-[220px] px-4 py-2.5 rounded-xl border bg-white hover:bg-slate-50 font-semibold text-indigo-600 border-indigo-100 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
               >
-                <option value="">Seleccionar Empresa...</option>
+                <option value="">Seleccionar Empresa</option>
                 {empresas.map((emp) => (
                   <option key={emp.idEmpresa} value={emp.idEmpresa}>
                     {emp.razonSocial}
@@ -904,10 +912,10 @@ export default function Environment() {
                   onChange={(e) => setEmpresaSeleccionada(e.target.value)}
                   disabled={importing}
                 >
-                  <option value="">-- Seleccionar Empresa --</option>
+                  <option value="">Seleccionar Empresa</option>
                   {empresas.map((emp) => (
                     <option key={emp.idEmpresa} value={emp.idEmpresa}>
-                      {emp.nombre}
+                      {emp.razonSocial}
                     </option>
                   ))}
                 </select>

@@ -1,7 +1,8 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import Card from "../components/Card";
 import ModalRegistrarRiesgo from "../components/ModalRegistrarRiesgo";
-import toast from "react-hot-toast"; // Importante
+import toast from "react-hot-toast";
+import ModalConfigurarMatriz from "../components/riesgo/ModalConfigurarMatriz";
 const AREAS = ["Planta", "Patio", "Taller", "Almacén", "Oficinas"];
 const uid = () => Math.random().toString(16).slice(2, 10).toUpperCase();
 const toneStyles = {
@@ -135,8 +136,8 @@ function Badge({ tone = "slate", children }) {
 function Drawer({ open, onClose, title, children }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 ">
-      <div className="absolute inset-0 bg-black/30 " onClick={onClose} />
+    <div className="fixed inset-0 z-50 backdrop-blur-sm">
+      <div className="absolute inset-0 bg-black/30  " onClick={onClose} />
       <div className="absolute right-0 top-0 h-full w-full sm:w-[520px] bg-white shadow-xl border-l border-slate-200 flex flex-col">
         <div className="p-4 border-b border-slate-200 flex items-center justify-between gap-2">
           <div className="font-semibold text-slate-800">{title}</div>
@@ -334,13 +335,7 @@ export default function Risks() {
       toast.error("Hubo un error al intentar subir el archivo.");
     }
   };
-  // Config
-  // const [riskConfig, setRiskConfig] = useState(
-  //   () => loadConfig() || DEFAULT_CONFIG,
-  // );
-
   const [riskConfig, setRiskConfig] = useState(DEFAULT_CONFIG);
-
   useEffect(() => {
     const token =
       localStorage.getItem("token") || sessionStorage.getItem("token");
@@ -588,7 +583,8 @@ export default function Risks() {
 
       // Actualizamos el estado global/local
       setRiskConfig(payload);
-      setConfigOpen(false);
+      // CERRAR MODAL NUEVO
+      setOpenTestModal(false);
 
       // Notificación de éxito
       toast.success("Configuración de matriz actualizada globalmente");
@@ -1014,294 +1010,514 @@ export default function Risks() {
         setAreas([]); // Evita que .map() falle
       });
   }, []);
-  return (
-    <main className="p-6 space-y-4">
-      {/* Header */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-800">
-            Riesgos (IPERC)
-          </h1>
-          <p className="text-sm text-slate-500">
-            Busca rápido, prioriza críticos y gestiona controles + acciones.
-          </p>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
+  const [openTestModal, setOpenTestModal] = useState(false);
+  return (
+    <>
+      <main className="p-6 space-y-4 ">
+        {/* Header */}
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-800">
+              Riesgos (IPERC)
+            </h1>
+            <p className="text-sm text-slate-500">
+              Busca rápido, prioriza críticos y gestiona controles + acciones.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* <button
             className="px-3 py-2 rounded border border-slate-200 bg-white hover:bg-slate-50 text-sm text-slate-700"
             onClick={() => setConfigOpen(true)}
           >
             Configurar matriz
-          </button>
+          </button> */}
+            <button
+              onClick={() => setOpenTestModal(true)}
+              className="px-3 py-2 rounded border border-slate-200 bg-white hover:bg-slate-50 text-sm text-slate-700"
+            >
+              Configurar matriz
+            </button>
+            <button
+              className="px-3 py-2 rounded bg-slate-900 text-white hover:bg-slate-700 text-sm"
+              onClick={() => console.log("Sincronizar (demo)")}
+              title="Sincroniza estado de controles según acciones"
+            >
+              Sincronizar
+            </button>
+            <button
+              className="px-3 py-2 rounded bg-slate-900 text-white hover:bg-slate-700 text-sm"
+              onClick={() => setOpen(true)}
+            >
+              + Nuevo riesgo
+            </button>
 
-          <button
-            className="px-3 py-2 rounded bg-slate-900 text-white hover:bg-slate-700 text-sm"
-            onClick={() => console.log("Sincronizar (demo)")}
-            title="Sincroniza estado de controles según acciones"
-          >
-            Sincronizar
-          </button>
-          <button
-            className="px-3 py-2 rounded bg-slate-900 text-white hover:bg-slate-700 text-sm"
-            onClick={() => setOpen(true)}
-          >
-            + Nuevo riesgo
-          </button>
-
-          <ModalRegistrarRiesgo
-            open={open}
-            onClose={() => setOpen(false)}
-            riskConfig={riskConfig}
-            onSave={(data) => {
-              const formatted = {
-                id: data.id,
-                nombreEmpresa: data.nombreEmpresa,
-                peligro: data.peligro,
-                area: data.area,
-                inh: data.riesgo_inherente,
-                res: data.riesgo_residual,
-                controles: [],
-                pendingControls: 0,
-                fecha_revision: data.fecha_revision
-                  ? data.fecha_revision.slice(0, 10)
-                  : "Sin fecha",
-                estado: data.estado || "Activo",
-                dueIn: null,
-              };
-              setRisks((prev) => [formatted, ...prev]);
-              setOpen(false);
-            }}
-          />
-        </div>
-      </div>
-      <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-12 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-800">Resumen</h2>
-          <p className="text-xs text-slate-500">Vista rápida para priorizar</p>
-        </div>
-
-        <div className="col-span-12 md:col-span-4">
-          <Card title="Riesgos críticos">
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <div className="text-3xl font-semibold text-slate-900">
-                  {kpis.criticalCount}
-                </div>
-                <div className="text-xs text-slate-500 mt-1">
-                  Según evaluación inherente
-                </div>
-              </div>
-              <span className="text-xs px-2 py-1 rounded border bg-red-50 text-red-700 border-red-200">
-                Prioridad
-              </span>
-            </div>
-          </Card>
-        </div>
-
-        <div className="col-span-12 md:col-span-4">
-          <Card title="Riesgos abiertos">
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <div className="text-3xl font-semibold text-slate-900">
-                  {kpis.openCount}
-                </div>
-                <div className="text-xs text-slate-500 mt-1">
-                  Abierto / En seguimiento
-                </div>
-              </div>
-              <span className="text-xs px-2 py-1 rounded border bg-slate-50 text-slate-700 border-slate-200">
-                Backlog
-              </span>
-            </div>
-          </Card>
-        </div>
-
-        <div className="col-span-12 md:col-span-4">
-          <Card title="Acciones vencidas">
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <div className="text-3xl font-semibold text-slate-900">
-                  {kpis.overdueActions}
-                </div>
-                <div className="text-xs text-slate-500 mt-1">
-                  Pendientes o en proceso
-                </div>
-              </div>
-              <span className="text-xs px-2 py-1 rounded border bg-amber-50 text-amber-800 border-amber-200">
-                Urgente
-              </span>
-            </div>
-          </Card>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <Card title="Filtros">
-        <div className="grid grid-cols-12 gap-3">
-          <div className="col-span-12 md:col-span-4">
-            <div className="text-xs text-slate-500 mb-1">Buscar</div>
-            <input
-              className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
-              placeholder="ID, peligro, área, tarea..."
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
+            <ModalRegistrarRiesgo
+              open={open}
+              onClose={() => setOpen(false)}
+              riskConfig={riskConfig}
+              onSave={(data) => {
+                const formatted = {
+                  id: data.id,
+                  nombreEmpresa: data.nombreEmpresa,
+                  peligro: data.peligro,
+                  area: data.area,
+                  inh: data.riesgo_inherente,
+                  res: data.riesgo_residual,
+                  controles: [],
+                  pendingControls: 0,
+                  fecha_revision: data.fecha_revision
+                    ? data.fecha_revision.slice(0, 10)
+                    : "Sin fecha",
+                  estado: data.estado || "Activo",
+                  dueIn: null,
+                };
+                setRisks((prev) => [formatted, ...prev]);
+                setOpen(false);
+              }}
+            />
+            <ModalConfigurarMatriz
+              open={openTestModal}
+              onClose={() => setOpenTestModal(false)}
+              draftMatrixSize={draftMatrixSize}
+              draftMaxScore={draftMaxScore}
+              draftWarnings={draftWarnings}
+              draftLevels={draftLevels}
+              canSaveConfig={canSaveConfig}
+              riskConfig={riskConfig}
+              setDraftConfig={setDraftConfig}
+              updateDraftLevel={updateDraftLevel}
+              addDraftLevel={addDraftLevel}
+              deleteDraftLevel={deleteDraftLevel}
+              autoFillDraftLevels={autoFillDraftLevels}
+              saveDraft={saveDraft}
+              clampInt={clampInt}
+              Badge={Badge}
             />
           </div>
-          <div className="col-span-12 md:col-span-2">
-            <div className="text-xs text-slate-500 mb-1">Área</div>
-            <select
-              className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
-              value={filterArea}
-              onChange={(e) => setFilterArea(e.target.value)}
-            >
-              <option value="Todas">Todas</option>
-              {areas.map((a) => (
-                <option key={a.idArea} value={a.idArea}>
-                  {a.Nombre}
-                </option>
-              ))}
-            </select>
+        </div>
+        <div className="grid grid-cols-12 gap-4">
+          <div className="col-span-12 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-800">Resumen</h2>
+            <p className="text-xs text-slate-500">
+              Vista rápida para priorizar
+            </p>
           </div>
 
-          <div className="col-span-12 md:col-span-2">
-            <div className="text-xs text-slate-500 mb-1">Estado</div>
-            <select
-              className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
-              value={filterEstado}
-              onChange={(e) => setFilterEstado(e.target.value)}
-            >
-              <option value="Todos">Todos</option>
-              <option value="Abierto">Abierto</option>
-              <option value="En seguimiento">En seguimiento</option>
-              <option value="Cerrado">Cerrado</option>
-            </select>
+          <div className="col-span-12 md:col-span-4">
+            <Card title="Riesgos críticos">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <div className="text-3xl font-semibold text-slate-900">
+                    {kpis.criticalCount}
+                  </div>
+                  <div className="text-xs text-slate-500 mt-1">
+                    Según evaluación inherente
+                  </div>
+                </div>
+                <span className="text-xs px-2 py-1 rounded border bg-red-50 text-red-700 border-red-200">
+                  Prioridad
+                </span>
+              </div>
+            </Card>
           </div>
 
-          <div className="col-span-12 md:col-span-2">
-            <div className="text-xs text-slate-500 mb-1">Nivel (Inherente)</div>
-            <select
-              className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
-              value={filterNivel}
-              onChange={(e) => setFilterNivel(e.target.value)}
-            >
-              <option value="Todos">Todos</option>
-              {levelNames.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
+          <div className="col-span-12 md:col-span-4">
+            <Card title="Riesgos abiertos">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <div className="text-3xl font-semibold text-slate-900">
+                    {kpis.openCount}
+                  </div>
+                  <div className="text-xs text-slate-500 mt-1">
+                    Abierto / En seguimiento
+                  </div>
+                </div>
+                <span className="text-xs px-2 py-1 rounded border bg-slate-50 text-slate-700 border-slate-200">
+                  Backlog
+                </span>
+              </div>
+            </Card>
           </div>
 
-          <div className="col-span-12 md:col-span-2 flex items-end">
-            <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={onlyOverdue}
-                onChange={(e) => setOnlyOverdue(e.target.checked)}
-              />
-              Solo vencidos
-            </label>
+          <div className="col-span-12 md:col-span-4">
+            <Card title="Acciones vencidas">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <div className="text-3xl font-semibold text-slate-900">
+                    {kpis.overdueActions}
+                  </div>
+                  <div className="text-xs text-slate-500 mt-1">
+                    Pendientes o en proceso
+                  </div>
+                </div>
+                <span className="text-xs px-2 py-1 rounded border bg-amber-50 text-amber-800 border-amber-200">
+                  Urgente
+                </span>
+              </div>
+            </Card>
           </div>
         </div>
-      </Card>
 
-      {/* Main list */}
-      <Card title={`Riesgos (${riskRows.length})`}>
-        <div className="overflow-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-slate-600 border-b">
-                <th className="py-2 pr-3">ID</th>
-                <th className="py-2 pr-3">Empresa</th>
-                <th className="py-2 pr-3">Peligro</th>
-                <th className="py-2 pr-3">Área</th>
-                <th className="py-2 pr-3">Inherente</th>
-                <th className="py-2 pr-3">Residual</th>
-                <th className="py-2 pr-3">Controles</th>
-                <th className="py-2 pr-3">Revisión</th>
+        {/* Filters */}
+        <Card title="Filtros">
+          <div className="grid grid-cols-12 gap-3">
+            <div className="col-span-12 md:col-span-4">
+              <div className="text-xs text-slate-500 mb-1">Buscar</div>
+              <input
+                className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
+                placeholder="ID, peligro, área, tarea..."
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </div>
+            <div className="col-span-12 md:col-span-2">
+              <div className="text-xs text-slate-500 mb-1">Área</div>
+              <select
+                className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
+                value={filterArea}
+                onChange={(e) => setFilterArea(e.target.value)}
+              >
+                <option value="Todas">Todas</option>
+                {areas.map((a) => (
+                  <option key={a.idArea} value={a.idArea}>
+                    {a.Nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-                <th className="py-2 pr-3">Estado</th>
-                <th className="py-2">Acción</th>
-              </tr>
-            </thead>
-            <tbody className="text-slate-700">
-              {riskRows.map((r) => (
-                <tr key={r.id} className="border-b last:border-b-0">
-                  <td className="py-2 pr-3 font-semibold">{`RSK-${r.id}`}</td>
-                  <td className="py-2 pr-3">
-                    <span className="text-xs font-medium uppercase text-slate-500">
-                      {r.nombreEmpresa || "Sin Empresa"}
-                    </span>
-                  </td>
-                  <td className="py-2 pr-3">{r.peligro}</td>
-                  <td className="py-2 pr-3">{r.area}</td>
-                  <td className="py-2 pr-3">{scoreBadge(r.inh)}</td>
-                  <td className="py-2 pr-3">{scoreBadge(r.res)}</td>
-                  <td className="py-2 pr-3">
-                    <span className="text-xs">
-                      {r.controles?.length ?? 0} total •{" "}
-                      <span
-                        className={
-                          (r.pendingControls ?? 0) > 0
-                            ? "text-amber-700 font-semibold"
-                            : "text-slate-600"
+            <div className="col-span-12 md:col-span-2">
+              <div className="text-xs text-slate-500 mb-1">Estado</div>
+              <select
+                className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
+                value={filterEstado}
+                onChange={(e) => setFilterEstado(e.target.value)}
+              >
+                <option value="Todos">Todos</option>
+                <option value="Abierto">Abierto</option>
+                <option value="En seguimiento">En seguimiento</option>
+                <option value="Cerrado">Cerrado</option>
+              </select>
+            </div>
+
+            <div className="col-span-12 md:col-span-2">
+              <div className="text-xs text-slate-500 mb-1">
+                Nivel (Inherente)
+              </div>
+              <select
+                className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
+                value={filterNivel}
+                onChange={(e) => setFilterNivel(e.target.value)}
+              >
+                <option value="Todos">Todos</option>
+                {levelNames.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="col-span-12 md:col-span-2 flex items-end">
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={onlyOverdue}
+                  onChange={(e) => setOnlyOverdue(e.target.checked)}
+                />
+                Solo vencidos
+              </label>
+            </div>
+          </div>
+        </Card>
+
+        {/* Main list */}
+        <Card title={`Riesgos (${riskRows.length})`}>
+          <div className="overflow-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-slate-600 border-b">
+                  <th className="py-2 pr-3">ID</th>
+                  <th className="py-2 pr-3">Empresa</th>
+                  <th className="py-2 pr-3">Peligro</th>
+                  <th className="py-2 pr-3">Área</th>
+                  <th className="py-2 pr-3">Inherente</th>
+                  <th className="py-2 pr-3">Residual</th>
+                  <th className="py-2 pr-3">Controles</th>
+                  <th className="py-2 pr-3">Revisión</th>
+
+                  <th className="py-2 pr-3">Estado</th>
+                  <th className="py-2">Acción</th>
+                </tr>
+              </thead>
+              <tbody className="text-slate-700">
+                {riskRows.map((r) => (
+                  <tr key={r.id} className="border-b last:border-b-0">
+                    <td className="py-2 pr-3 font-semibold">{`RSK-${r.id}`}</td>
+                    <td className="py-2 pr-3">
+                      <span className="text-xs font-medium uppercase text-slate-500">
+                        {r.nombreEmpresa || "Sin Empresa"}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-3">{r.peligro}</td>
+                    <td className="py-2 pr-3">{r.area}</td>
+                    <td className="py-2 pr-3">{scoreBadge(r.inh)}</td>
+                    <td className="py-2 pr-3">{scoreBadge(r.res)}</td>
+                    <td className="py-2 pr-3">
+                      <span className="text-xs">
+                        {r.controles?.length ?? 0} total •{" "}
+                        <span
+                          className={
+                            (r.pendingControls ?? 0) > 0
+                              ? "text-amber-700 font-semibold"
+                              : "text-slate-600"
+                          }
+                        >
+                          {r.pendingControls ?? 0} pendientes
+                        </span>
+                      </span>
+                    </td>
+                    <td className="py-2 pr-3">
+                      <div className="text-xs">
+                        {fmtDate(r.fecha_revision)}{" "}
+                        {r.dueIn !== null && r.dueIn < 0 ? (
+                          <span className="ml-2 text-red-700 font-semibold">
+                            Vencido
+                          </span>
+                        ) : r.dueIn !== null && r.dueIn <= 7 ? (
+                          <span className="ml-2 text-amber-800 font-semibold">
+                            Próximo
+                          </span>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td className="py-2 pr-3">
+                      <Badge
+                        tone={
+                          r.estado === "Cerrado"
+                            ? "green"
+                            : r.estado === "En seguimiento"
+                              ? "yellow"
+                              : "slate"
                         }
                       >
-                        {r.pendingControls ?? 0} pendientes
-                      </span>
-                    </span>
-                  </td>
-                  <td className="py-2 pr-3">
-                    <div className="text-xs">
-                      {fmtDate(r.fecha_revision)}{" "}
-                      {r.dueIn !== null && r.dueIn < 0 ? (
-                        <span className="ml-2 text-red-700 font-semibold">
-                          Vencido
-                        </span>
-                      ) : r.dueIn !== null && r.dueIn <= 7 ? (
-                        <span className="ml-2 text-amber-800 font-semibold">
-                          Próximo
-                        </span>
-                      ) : null}
-                    </div>
-                  </td>
-                  <td className="py-2 pr-3">
-                    <Badge
-                      tone={
-                        r.estado === "Cerrado"
-                          ? "green"
-                          : r.estado === "En seguimiento"
-                            ? "yellow"
-                            : "slate"
-                      }
+                        {r.estado}
+                      </Badge>
+                    </td>
+                    <td className="py-2">
+                      <button
+                        className="text-sm px-3 py-1.5 rounded border border-slate-200 bg-white hover:bg-slate-50"
+                        onClick={() => openRisk(r.id)}
+                      >
+                        Ver detalle
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {riskRows.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={10}
+                      className="py-6 text-center text-slate-500"
                     >
-                      {r.estado}
-                    </Badge>
-                  </td>
-                  <td className="py-2">
-                    <button
-                      className="text-sm px-3 py-1.5 rounded border border-slate-200 bg-white hover:bg-slate-50"
-                      onClick={() => openRisk(r.id)}
-                    >
-                      Ver detalle
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {riskRows.length === 0 && (
-                <tr>
-                  <td colSpan={10} className="py-6 text-center text-slate-500">
-                    No hay resultados con esos filtros.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+                      No hay resultados con esos filtros.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
 
+        {/* Config modal */}
+        {/* <Modal
+        open={configOpen}
+        onClose={() => setConfigOpen(false)}
+        title="Configurar matriz y niveles"
+      >
+        <div className="grid grid-cols-12 gap-4">
+          <div className="col-span-12 md:col-span-4">
+            <div className="text-xs text-slate-500 mb-1">Tamaño de matriz</div>
+            <div className="flex items-center gap-2">
+              <input
+                type="range"
+                min={3}
+                max={7}
+                value={draftMatrixSize}
+                onChange={(e) =>
+                  setDraftConfig((x) => ({
+                    ...x,
+                    matrixSize: clampInt(e.target.value, 3, 7),
+                  }))
+                }
+                className="w-full"
+              />
+              <span className="text-sm font-semibold text-slate-800 w-14 text-right">
+                {draftMatrixSize}×{draftMatrixSize}
+              </span>
+            </div>
+            <div className="text-xs text-slate-500 mt-1">
+              Puntaje máximo: {draftMaxScore}
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                className="text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200"
+                onClick={autoFillDraftLevels}
+              >
+                Auto-rangos
+              </button>
+              <button
+                className="text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200"
+                onClick={addDraftLevel}
+              >
+                + Nivel
+              </button>
+            </div>
+          </div>
+
+          <div className="col-span-12 md:col-span-8">
+            {(draftWarnings.gaps.length > 0 ||
+              draftWarnings.overlaps.length > 0) && (
+              <div className="mb-3 p-3 rounded border border-amber-200 bg-amber-50 text-amber-900 text-xs">
+                {draftWarnings.gaps.length > 0 && (
+                  <div className="mb-1">
+                    <span className="font-semibold">Gaps:</span>{" "}
+                    {draftWarnings.gaps.map((g, i) => (
+                      <span key={i} className="mr-2">
+                        {g.from}–{g.to}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {draftWarnings.overlaps.length > 0 && (
+                  <div>
+                    <span className="font-semibold">Solapes:</span>{" "}
+                    {draftWarnings.overlaps.slice(0, 3).map((o, i) => (
+                      <span key={i} className="mr-2">
+                        [{o.a}] con [{o.b}]
+                      </span>
+                    ))}
+                    {draftWarnings.overlaps.length > 3 ? <span>…</span> : null}
+                  </div>
+                )}
+                <div className="mt-2">
+                  No se puede guardar hasta corregir rangos.
+                </div>
+              </div>
+            )}
+
+            <div className="overflow-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-slate-600 border-b">
+                    <th className="py-2 pr-3">Nombre</th>
+                    <th className="py-2 pr-3">Min</th>
+                    <th className="py-2 pr-3">Max</th>
+                    <th className="py-2 pr-3">Color</th>
+                    <th className="py-2 pr-3">Vista</th>
+                    <th className="py-2">Acción</th>
+                  </tr>
+                </thead>
+                <tbody className="text-slate-700">
+                  {draftLevels.map((l) => (
+                    <tr key={l.id} className="border-b last:border-b-0">
+                      <td className="py-2 pr-3">
+                        <input
+                          className="w-full border border-slate-200 rounded px-2 py-1"
+                          value={l.name}
+                          onChange={(e) =>
+                            updateDraftLevel(l.id, { name: e.target.value })
+                          }
+                        />
+                      </td>
+                      <td className="py-2 pr-3">
+                        <input
+                          type="number"
+                          min={1}
+                          max={draftMaxScore}
+                          className="w-24 border border-slate-200 rounded px-2 py-1"
+                          value={l.min}
+                          onChange={(e) =>
+                            updateDraftLevel(l.id, {
+                              min: clampInt(e.target.value, 1, draftMaxScore),
+                            })
+                          }
+                        />
+                      </td>
+                      <td className="py-2 pr-3">
+                        <input
+                          type="number"
+                          min={1}
+                          max={draftMaxScore}
+                          className="w-24 border border-slate-200 rounded px-2 py-1"
+                          value={l.max}
+                          onChange={(e) =>
+                            updateDraftLevel(l.id, {
+                              max: clampInt(e.target.value, 1, draftMaxScore),
+                            })
+                          }
+                        />
+                      </td>
+                      <td className="py-2 pr-3">
+                        <select
+                          className="border border-slate-200 rounded px-2 py-1"
+                          value={l.tone}
+                          onChange={(e) =>
+                            updateDraftLevel(l.id, { tone: e.target.value })
+                          }
+                        >
+                          <option value="green">Verde</option>
+                          <option value="yellow">Amarillo</option>
+                          <option value="red">Rojo</option>
+                          <option value="slate">Gris</option>
+                        </select>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <Badge tone={l.tone}>
+                          {l.name} ({l.min})
+                        </Badge>
+                      </td>
+                      <td className="py-2">
+                        <button
+                          className="text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200"
+                          onClick={() => deleteDraftLevel(l.id)}
+                          disabled={draftLevels.length <= 1}
+                        >
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-3 flex items-center justify-end gap-2">
+              <button
+                className="px-4 py-2 rounded border border-slate-200 bg-white hover:bg-slate-50 text-sm"
+                onClick={() => setDraftConfig(riskConfig)}
+              >
+                Descartar
+              </button>
+              <button
+                className={`px-4 py-2 rounded text-sm ${
+                  canSaveConfig
+                    ? "bg-slate-900 text-white hover:bg-slate-700"
+                    : "bg-slate-200 text-slate-500 cursor-not-allowed"
+                }`}
+                disabled={!canSaveConfig}
+                onClick={saveDraft}
+              >
+                Guardar configuración
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal> */}
+      </main>
       {/* Drawer */}
       <Drawer
         open={drawerOpen}
@@ -1316,7 +1532,7 @@ export default function Risks() {
           <div className="text-sm text-slate-600">Selecciona un riesgo.</div>
         ) : (
           <>
-            <div className="p-3 rounded border border-slate-200 bg-slate-50">
+            <div className="p-3 rounded border border-slate-200 bg-slate-50 ">
               <div className="text-xs text-slate-500">Contexto</div>
               <div className="mt-1 text-sm text-slate-800">
                 <span className="font-semibold">{selectedRisk.area}</span> •{" "}
@@ -1336,7 +1552,7 @@ export default function Risks() {
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-4 flex flex-wrap gap-2 ">
               {[
                 ["evaluacion", "Evaluación"],
                 ["controles", "Controles"],
@@ -1926,193 +2142,6 @@ export default function Risks() {
           </>
         )}
       </Drawer>
-
-      {/* Config modal */}
-      <Modal
-        open={configOpen}
-        onClose={() => setConfigOpen(false)}
-        title="Configurar matriz y niveles (Admin)"
-      >
-        <div className="grid grid-cols-12 gap-4">
-          <div className="col-span-12 md:col-span-4">
-            <div className="text-xs text-slate-500 mb-1">Tamaño de matriz</div>
-            <div className="flex items-center gap-2">
-              <input
-                type="range"
-                min={3}
-                max={7}
-                value={draftMatrixSize}
-                onChange={(e) =>
-                  setDraftConfig((x) => ({
-                    ...x,
-                    matrixSize: clampInt(e.target.value, 3, 7),
-                  }))
-                }
-                className="w-full"
-              />
-              <span className="text-sm font-semibold text-slate-800 w-14 text-right">
-                {draftMatrixSize}×{draftMatrixSize}
-              </span>
-            </div>
-            <div className="text-xs text-slate-500 mt-1">
-              Puntaje máximo: {draftMaxScore}
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                className="text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200"
-                onClick={autoFillDraftLevels}
-              >
-                Auto-rangos
-              </button>
-              <button
-                className="text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200"
-                onClick={addDraftLevel}
-              >
-                + Nivel
-              </button>
-            </div>
-          </div>
-
-          <div className="col-span-12 md:col-span-8">
-            {(draftWarnings.gaps.length > 0 ||
-              draftWarnings.overlaps.length > 0) && (
-              <div className="mb-3 p-3 rounded border border-amber-200 bg-amber-50 text-amber-900 text-xs">
-                {draftWarnings.gaps.length > 0 && (
-                  <div className="mb-1">
-                    <span className="font-semibold">Gaps:</span>{" "}
-                    {draftWarnings.gaps.map((g, i) => (
-                      <span key={i} className="mr-2">
-                        {g.from}–{g.to}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {draftWarnings.overlaps.length > 0 && (
-                  <div>
-                    <span className="font-semibold">Solapes:</span>{" "}
-                    {draftWarnings.overlaps.slice(0, 3).map((o, i) => (
-                      <span key={i} className="mr-2">
-                        [{o.a}] con [{o.b}]
-                      </span>
-                    ))}
-                    {draftWarnings.overlaps.length > 3 ? <span>…</span> : null}
-                  </div>
-                )}
-                <div className="mt-2">
-                  No se puede guardar hasta corregir rangos.
-                </div>
-              </div>
-            )}
-
-            <div className="overflow-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-slate-600 border-b">
-                    <th className="py-2 pr-3">Nombre</th>
-                    <th className="py-2 pr-3">Min</th>
-                    <th className="py-2 pr-3">Max</th>
-                    <th className="py-2 pr-3">Color</th>
-                    <th className="py-2 pr-3">Vista</th>
-                    <th className="py-2">Acción</th>
-                  </tr>
-                </thead>
-                <tbody className="text-slate-700">
-                  {draftLevels.map((l) => (
-                    <tr key={l.id} className="border-b last:border-b-0">
-                      <td className="py-2 pr-3">
-                        <input
-                          className="w-full border border-slate-200 rounded px-2 py-1"
-                          value={l.name}
-                          onChange={(e) =>
-                            updateDraftLevel(l.id, { name: e.target.value })
-                          }
-                        />
-                      </td>
-                      <td className="py-2 pr-3">
-                        <input
-                          type="number"
-                          min={1}
-                          max={draftMaxScore}
-                          className="w-24 border border-slate-200 rounded px-2 py-1"
-                          value={l.min}
-                          onChange={(e) =>
-                            updateDraftLevel(l.id, {
-                              min: clampInt(e.target.value, 1, draftMaxScore),
-                            })
-                          }
-                        />
-                      </td>
-                      <td className="py-2 pr-3">
-                        <input
-                          type="number"
-                          min={1}
-                          max={draftMaxScore}
-                          className="w-24 border border-slate-200 rounded px-2 py-1"
-                          value={l.max}
-                          onChange={(e) =>
-                            updateDraftLevel(l.id, {
-                              max: clampInt(e.target.value, 1, draftMaxScore),
-                            })
-                          }
-                        />
-                      </td>
-                      <td className="py-2 pr-3">
-                        <select
-                          className="border border-slate-200 rounded px-2 py-1"
-                          value={l.tone}
-                          onChange={(e) =>
-                            updateDraftLevel(l.id, { tone: e.target.value })
-                          }
-                        >
-                          <option value="green">Verde</option>
-                          <option value="yellow">Amarillo</option>
-                          <option value="red">Rojo</option>
-                          <option value="slate">Gris</option>
-                        </select>
-                      </td>
-                      <td className="py-2 pr-3">
-                        <Badge tone={l.tone}>
-                          {l.name} ({l.min})
-                        </Badge>
-                      </td>
-                      <td className="py-2">
-                        <button
-                          className="text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200"
-                          onClick={() => deleteDraftLevel(l.id)}
-                          disabled={draftLevels.length <= 1}
-                        >
-                          Eliminar
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="mt-3 flex items-center justify-end gap-2">
-              <button
-                className="px-4 py-2 rounded border border-slate-200 bg-white hover:bg-slate-50 text-sm"
-                onClick={() => setDraftConfig(riskConfig)}
-              >
-                Descartar
-              </button>
-              <button
-                className={`px-4 py-2 rounded text-sm ${
-                  canSaveConfig
-                    ? "bg-slate-900 text-white hover:bg-slate-700"
-                    : "bg-slate-200 text-slate-500 cursor-not-allowed"
-                }`}
-                disabled={!canSaveConfig}
-                onClick={saveDraft}
-              >
-                Guardar configuración
-              </button>
-            </div>
-          </div>
-        </div>
-      </Modal>
-    </main>
+    </>
   );
 }

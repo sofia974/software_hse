@@ -34,7 +34,7 @@ export default function ModalCrearEmpresa({ open, onClose, onCreated }) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-sm">
       {/* Caja del modal */}
       <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-lg">
         {/* Header */}

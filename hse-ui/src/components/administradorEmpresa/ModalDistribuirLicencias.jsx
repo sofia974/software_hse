@@ -73,8 +73,14 @@ export default function ModalDistribuirLicencias({ open, onClose }) {
           },
         );
 
+        // const disp = await resDisp.json();
+        // setTotalLicencias(disp.total);
         const disp = await resDisp.json();
-        setTotalLicencias(disp.total);
+
+        const disponibles = disp.total;
+
+        setTotalLicencias(disponibles);
+
         console.log("Total de Licencias Disponibles", disp);
         // 4. DISTRIBUCIÓN EXISTENTE
         const resDist = await fetch(
@@ -87,14 +93,20 @@ export default function ModalDistribuirLicencias({ open, onClose }) {
         const dist = await resDist.json();
 
         const inicial = {};
-        console.log("Distribucion", dist);
+
         dist.forEach((d) => {
           inicial[d.idEmpresa] = d.cantidadAsignada;
         });
 
-        // asegurar que todos existan
-        inicial[padre.idEmpresa] = inicial[padre.idEmpresa] || 0;
+        // TOTAL DISTRIBUIDO A HIJAS
+        const totalDistribuidoHijas = dist
+          .filter((d) => d.idEmpresa !== padre.idEmpresa)
+          .reduce((acc, d) => acc + d.cantidadAsignada, 0);
 
+        // EMPRESA PRINCIPAL = TOTAL - DISTRIBUIDO
+        inicial[padre.idEmpresa] = disp.total - totalDistribuidoHijas;
+
+        // ASEGURAR SUBEMPRESAS
         subs.forEach((e) => {
           inicial[e.idEmpresa] = inicial[e.idEmpresa] || 0;
         });
@@ -108,15 +120,46 @@ export default function ModalDistribuirLicencias({ open, onClose }) {
     load();
   }, [open]);
 
+  // const handleChange = (idEmpresa, value) => {
+  //   setDistribucion((prev) => ({
+  //     ...prev,
+  //     [idEmpresa]: Number(value),
+  //   }));
+  // };
   const handleChange = (idEmpresa, value) => {
-    setDistribucion((prev) => ({
-      ...prev,
-      [idEmpresa]: Number(value),
-    }));
+    let nuevoValor = Number(value);
+
+    // NO NEGATIVOS
+    if (nuevoValor < 0) {
+      nuevoValor = 0;
+    }
+
+    setDistribucion((prev) => {
+      const nuevaDistribucion = {
+        ...prev,
+        [idEmpresa]: nuevoValor,
+      };
+
+      // SUMAR SOLO HIJAS
+      const totalHijas = subempresas.reduce((acc, sub) => {
+        return acc + (Number(nuevaDistribucion[sub.idEmpresa]) || 0);
+      }, 0);
+
+      // PRINCIPAL = TOTAL - HIJAS
+      nuevaDistribucion[empresaPadre.idEmpresa] = Math.max(
+        totalLicencias - totalHijas,
+        0,
+      );
+
+      return nuevaDistribucion;
+    });
   };
 
-  const totalAsignado = Object.values(distribucion).reduce((a, b) => a + b, 0);
-
+  // const totalAsignado = Object.values(distribucion).reduce((a, b) => a + b, 0);
+  const totalAsignado = subempresas.reduce(
+    (acc, sub) => acc + (Number(distribucion[sub.idEmpresa]) || 0),
+    0,
+  );
   const guardar = async () => {
     if (totalAsignado > totalLicencias) {
       alert("Excedes el total de licencias");
@@ -171,14 +214,17 @@ export default function ModalDistribuirLicencias({ open, onClose }) {
             <p className="text-sm text-gray-500">Empresa Principal</p>
             <p className="font-bold">{empresaPadre.razonSocial}</p>
 
-            <input
+            {/* <input
               type="number"
               className="w-full mt-2 border rounded px-2 py-1"
               value={distribucion[empresaPadre.idEmpresa] || 0}
               onChange={(e) =>
                 handleChange(empresaPadre.idEmpresa, e.target.value)
               }
-            />
+            /> */}
+            <div className="mt-2 bg-emerald-50 border border-emerald-200 rounded px-3 py-2 font-bold text-emerald-700">
+              {distribucion[empresaPadre.idEmpresa] || 0} licencias
+            </div>
           </div>
         )}
 

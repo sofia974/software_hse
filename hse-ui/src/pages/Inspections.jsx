@@ -642,627 +642,646 @@ export default function Inspections() {
   };
   // -------------------- UI --------------------
   return (
-    <main className="p-6 space-y-4">
-      {/* Header */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-800">
-            Inspecciones
-          </h1>
-          <p className="text-sm text-slate-500">
-            Checklists, hallazgos y acciones (CAPA) en una sola vista.
-          </p>
-        </div>
-
-        <button
-          className="px-4 py-2 bg-slate-900 text-white rounded hover:bg-slate-700"
-          onClick={openCreate}
-        >
-          + Nueva inspección
-        </button>
-      </div>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-12 md:col-span-3">
-          <Card title="Total">
-            <div className="text-3xl font-semibold text-slate-900">
-              {kpis.total}
-            </div>
-            <div className="text-xs text-slate-500 mt-1">
-              Inspecciones registradas
-            </div>
-          </Card>
-        </div>
-        <div className="col-span-12 md:col-span-3">
-          <Card title="Pendientes / En proceso">
-            <div className="text-3xl font-semibold text-slate-900">
-              {kpis.pendientes + kpis.proceso}
-            </div>
-            <div className="text-xs text-slate-500 mt-1">
-              Pendientes: {kpis.pendientes} • En proceso: {kpis.proceso}
-            </div>
-          </Card>
-        </div>
-        <div className="col-span-12 md:col-span-3">
-          <Card title="Promedio % Cumpl.">
-            <div className="text-3xl font-semibold text-slate-900">
-              {kpis.promedio === null ? "—" : `${kpis.promedio}%`}
-            </div>
-            <div className="text-xs text-slate-500 mt-1">
-              Solo inspecciones con respuestas
-            </div>
-          </Card>
-        </div>
-        <div className="col-span-12 md:col-span-3">
-          <Card title="Hallazgos / Acciones abiertas">
-            <div className="text-3xl font-semibold text-slate-900">
-              {kpis.hallazgosAbiertos}
-            </div>
-            <div className="text-xs text-slate-500 mt-1">
-              Acciones no cerradas: {kpis.accionesPendientes}
-            </div>
-          </Card>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <Card title="Filtros">
-        <div className="grid grid-cols-12 gap-3">
-          <div className="col-span-12 md:col-span-4">
-            <div className="text-xs text-slate-500 mb-1">Buscar</div>
-            <input
-              className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
-              placeholder="ID, área, checklist, responsable..."
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
+    <>
+      <main className="p-6 space-y-4">
+        {/* Header */}
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-800">
+              Inspecciones
+            </h1>
+            <p className="text-sm text-slate-500">
+              Checklists, hallazgos y acciones (CAPA) en una sola vista.
+            </p>
           </div>
 
-          <div className="col-span-12 md:col-span-2">
-            <div className="text-xs text-slate-500 mb-1">Área</div>
-            <select
-              className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
-              value={area}
-              onChange={(e) => setArea(e.target.value)}
-            >
-              <option value="Todas">Todas</option>
-              {areas.map((x) => (
-                <option key={x.idArea} value={x.idArea}>
-                  {x.Nombre}
-                </option>
-              ))}
-            </select>
-          </div>
+          <button
+            className="px-4 py-2 bg-slate-900 text-white rounded hover:bg-slate-700"
+            onClick={openCreate}
+          >
+            + Nueva inspección
+          </button>
+        </div>
 
-          <div className="col-span-12 md:col-span-2">
-            <div className="text-xs text-slate-500 mb-1">Estado</div>
-            <select
-              className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-            >
-              <option value="Todos">Todos</option>
-              <option value="Pendiente">Pendiente</option>
-              <option value="En proceso">En proceso</option>
-              <option value="Completada">Completada</option>
-            </select>
+        {/* KPIs */}
+        <div className="grid grid-cols-12 gap-4">
+          <div className="col-span-12 md:col-span-3">
+            <Card title="Total">
+              <div className="text-3xl font-semibold text-slate-900">
+                {kpis.total}
+              </div>
+              <div className="text-xs text-slate-500 mt-1">
+                Inspecciones registradas
+              </div>
+            </Card>
           </div>
-
-          <div className="col-span-12 md:col-span-2">
-            <div className="text-xs text-slate-500 mb-1">Checklist</div>
-            <select
-              className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
-              value={filterChecklist}
-              onChange={(e) => setFilterChecklist(e.target.value)}
-            >
-              <option value="Todos">Todos</option>
-              {checklists.map((c) => (
-                <option key={c.id} value={c.nombre}>
-                  {c.nombre}
-                </option>
-              ))}
-            </select>
+          <div className="col-span-12 md:col-span-3">
+            <Card title="Pendientes / En proceso">
+              <div className="text-3xl font-semibold text-slate-900">
+                {kpis.pendientes + kpis.proceso}
+              </div>
+              <div className="text-xs text-slate-500 mt-1">
+                Pendientes: {kpis.pendientes} • En proceso: {kpis.proceso}
+              </div>
+            </Card>
           </div>
-
-          <div className="col-span-6 md:col-span-1">
-            <div className="text-xs text-slate-500 mb-1">Desde</div>
-            <input
-              type="date"
-              className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-            />
+          <div className="col-span-12 md:col-span-3">
+            <Card title="Promedio % Cumpl.">
+              <div className="text-3xl font-semibold text-slate-900">
+                {kpis.promedio === null ? "—" : `${kpis.promedio}%`}
+              </div>
+              <div className="text-xs text-slate-500 mt-1">
+                Solo inspecciones con respuestas
+              </div>
+            </Card>
           </div>
-
-          <div className="col-span-6 md:col-span-1">
-            <div className="text-xs text-slate-500 mb-1">Hasta</div>
-            <input
-              type="date"
-              className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-            />
+          <div className="col-span-12 md:col-span-3">
+            <Card title="Hallazgos / Acciones abiertas">
+              <div className="text-3xl font-semibold text-slate-900">
+                {kpis.hallazgosAbiertos}
+              </div>
+              <div className="text-xs text-slate-500 mt-1">
+                Acciones no cerradas: {kpis.accionesPendientes}
+              </div>
+            </Card>
           </div>
         </div>
-      </Card>
 
-      <div className="grid grid-cols-12 gap-4">
-        {/* List */}
-        <div className="col-span-12 lg:col-span-7">
-          <Card title={`Listado (${filtered.length})`}>
-            <div className="overflow-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-slate-600 border-b">
-                    <th className="py-2 pr-3">ID</th>
-                    <th className="py-2 pr-3">Empresa</th>
-                    <th className="py-2 pr-3">Fecha</th>
-                    <th className="py-2 pr-3">Área</th>
-                    <th className="py-2 pr-3">Checklist</th>
-                    <th className="py-2 pr-3">Estado</th>
-                    <th className="py-2 pr-3">% Cumpl.</th>
-                    <th className="py-2 pr-3">Hallazgos</th>
-                    <th className="py-2">Acción</th>
-                  </tr>
-                </thead>
-                <tbody className="text-slate-700">
-                  {filtered.map((x) => {
-                    const isActive = x.id === selectedId;
-                    const openFindings = x.openFindings || 0;
-                    return (
-                      <tr
-                        key={x.id}
-                        className={`border-b last:border-b-0 cursor-pointer ${isActive ? "bg-slate-50" : ""}`}
-                        onClick={() => setSelectedId(x.id)}
-                      >
-                        <td className="py-2 pr-3 font-semibold">{`INSP-${x.id}`}</td>
-                        <td className="py-2 pr-3 text-xs font-medium text-slate-500 uppercase">
-                          {x.nombreEmpresa || "N/A"}
-                        </td>
-                        <td className="py-2 pr-3">
-                          {new Date(x.fecha).toLocaleDateString("es-PE", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                          })}
-                        </td>
-                        <td className="py-2 pr-3">{x.area}</td>
-                        <td className="py-2 pr-3">{x.checklist}</td>
-                        <td className="py-2 pr-3">
-                          <StatusBadge status={x.status} />
-                        </td>
-                        <td className="py-2 pr-3">
-                          {x.cumplimiento === null ? "—" : `${x.cumplimiento}%`}
-                        </td>
-                        <td className="py-2 pr-3">
-                          <span
-                            className={`text-xs ${openFindings > 0 ? "text-red-700 font-semibold" : "text-slate-600"}`}
-                          >
-                            {openFindings}
-                          </span>
-                        </td>
-                        <td className="py-2">
-                          <button
-                            className="text-sm underline"
-                            onClick={() => setSelectedId(x.id)}
-                          >
-                            Ver detalle
-                          </button>
+        {/* Filters */}
+        <Card title="Filtros">
+          <div className="grid grid-cols-12 gap-3">
+            <div className="col-span-12 md:col-span-4">
+              <div className="text-xs text-slate-500 mb-1">Buscar</div>
+              <input
+                className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
+                placeholder="ID, área, checklist, responsable..."
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </div>
+
+            <div className="col-span-12 md:col-span-2">
+              <div className="text-xs text-slate-500 mb-1">Área</div>
+              <select
+                className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
+                value={area}
+                onChange={(e) => setArea(e.target.value)}
+              >
+                <option value="Todas">Todas</option>
+                {areas.map((x) => (
+                  <option key={x.idArea} value={x.idArea}>
+                    {x.Nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="col-span-12 md:col-span-2">
+              <div className="text-xs text-slate-500 mb-1">Estado</div>
+              <select
+                className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+              >
+                <option value="Todos">Todos</option>
+                <option value="Pendiente">Pendiente</option>
+                <option value="En proceso">En proceso</option>
+                <option value="Completada">Completada</option>
+              </select>
+            </div>
+
+            <div className="col-span-12 md:col-span-2">
+              <div className="text-xs text-slate-500 mb-1">Checklist</div>
+              <select
+                className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
+                value={filterChecklist}
+                onChange={(e) => setFilterChecklist(e.target.value)}
+              >
+                <option value="Todos">Todos</option>
+                {checklists.map((c) => (
+                  <option key={c.id} value={c.nombre}>
+                    {c.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="col-span-6 md:col-span-1">
+              <div className="text-xs text-slate-500 mb-1">Desde</div>
+              <input
+                type="date"
+                className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+            </div>
+
+            <div className="col-span-6 md:col-span-1">
+              <div className="text-xs text-slate-500 mb-1">Hasta</div>
+              <input
+                type="date"
+                className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+            </div>
+          </div>
+        </Card>
+
+        <div className="grid grid-cols-12 gap-4">
+          {/* List */}
+          <div className="col-span-12 lg:col-span-7">
+            <Card title={`Listado (${filtered.length})`}>
+              <div className="overflow-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-slate-600 border-b">
+                      <th className="py-2 pr-3">ID</th>
+                      <th className="py-2 pr-3">Empresa</th>
+                      <th className="py-2 pr-3">Fecha</th>
+                      <th className="py-2 pr-3">Área</th>
+                      <th className="py-2 pr-3">Checklist</th>
+                      <th className="py-2 pr-3">Estado</th>
+                      <th className="py-2 pr-3">% Cumpl.</th>
+                      <th className="py-2 pr-3">Hallazgos</th>
+                      <th className="py-2">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-slate-700">
+                    {filtered.map((x) => {
+                      const isActive = x.id === selectedId;
+                      const openFindings = x.openFindings || 0;
+                      return (
+                        <tr
+                          key={x.id}
+                          className={`border-b last:border-b-0 cursor-pointer ${isActive ? "bg-slate-50" : ""}`}
+                          onClick={() => setSelectedId(x.id)}
+                        >
+                          <td className="py-2 pr-3 font-semibold">{`INSP-${x.id}`}</td>
+                          <td className="py-2 pr-3 text-xs font-medium text-slate-500 uppercase">
+                            {x.nombreEmpresa || "N/A"}
+                          </td>
+                          <td className="py-2 pr-3">
+                            {new Date(x.fecha).toLocaleDateString("es-PE", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "numeric",
+                            })}
+                          </td>
+                          <td className="py-2 pr-3">{x.area}</td>
+                          <td className="py-2 pr-3">{x.checklist}</td>
+                          <td className="py-2 pr-3">
+                            <StatusBadge status={x.status} />
+                          </td>
+                          <td className="py-2 pr-3">
+                            {x.cumplimiento === null
+                              ? "—"
+                              : `${x.cumplimiento}%`}
+                          </td>
+                          <td className="py-2 pr-3">
+                            <span
+                              className={`text-xs ${openFindings > 0 ? "text-red-700 font-semibold" : "text-slate-600"}`}
+                            >
+                              {openFindings}
+                            </span>
+                          </td>
+                          <td className="py-2">
+                            <button
+                              className="text-sm underline"
+                              onClick={() => setSelectedId(x.id)}
+                            >
+                              Ver detalle
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {filtered.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={9}
+                          className="py-6 text-center text-slate-500"
+                        >
+                          No hay resultados.
                         </td>
                       </tr>
-                    );
-                  })}
-                  {filtered.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={9}
-                        className="py-6 text-center text-slate-500"
-                      >
-                        No hay resultados.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </div>
-
-        {/* Detail */}
-        <div className="col-span-12 lg:col-span-5">
-          <Card title="Detalle">
-            {!selected ? (
-              <div className="text-sm text-slate-500">
-                Selecciona una inspección para ver el detalle.
+                    )}
+                  </tbody>
+                </table>
               </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="text-sm text-slate-500">{`INSP-${selected.id}`}</div>
-                    <div className="font-semibold text-slate-800">
-                      {selected.checklist}
-                    </div>
-                    <div className="text-sm text-slate-600">
-                      {selected.area} •{" "}
-                      {new Date(selected.fecha).toLocaleDateString("es-PE", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                      })}
-                    </div>
+            </Card>
+          </div>
 
-                    <div className="text-xs text-slate-500 mt-1">
-                      Responsable:{" "}
-                      <span className="text-slate-700 font-semibold">
-                        {selected.responsable || "—"}
-                      </span>
-                    </div>
-                  </div>
-                  <StatusBadge status={selected.status} />
+          {/* Detail */}
+          <div className="col-span-12 lg:col-span-5">
+            <Card title="Detalle">
+              {!selected ? (
+                <div className="text-sm text-slate-500">
+                  Selecciona una inspección para ver el detalle.
                 </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 rounded border border-slate-200 bg-white">
-                    <div className="text-xs text-slate-500 mb-1">
-                      % Cumplimiento
-                    </div>
-                    <div className="text-2xl font-semibold text-slate-900">
-                      {selected.cumplimiento === null
-                        ? "—"
-                        : `${selected.cumplimiento}%`}
-                    </div>
-                    <div className="text-xs text-slate-500 mt-1">
-                      Auto-calculado según respuestas
-                    </div>
-                  </div>
-                  <div className="p-3 rounded border border-slate-200 bg-white">
-                    <div className="text-xs text-slate-500 mb-1">
-                      Hallazgos abiertos
-                    </div>
-                    <div className="text-2xl font-semibold text-slate-900">
-                      {
-                        (selected.findings || []).filter(
-                          (f) => f.estado !== "Cerrado",
-                        ).length
-                      }
-                    </div>
-                    <div className="text-xs text-slate-500 mt-1">
-                      Desde checklist / manual
-                    </div>
-                  </div>
-                </div>
-
-                {/* Checklist interactive */}
-                <div>
-                  <div className="text-sm font-semibold text-slate-800 mb-2">
-                    Checklist
-                  </div>
-                  <div className="space-y-2">
-                    {selected.items?.map((it) => (
-                      <div
-                        key={it.id}
-                        className="border rounded p-3 bg-slate-50"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="text-sm text-slate-800 font-medium">
-                            {it.q}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              disabled={locked}
-                              className={`text-xs px-2 py-1 rounded border ${
-                                locked
-                                  ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
-                                  : it.ok === true
-                                    ? "bg-green-50 text-green-700 border-green-200"
-                                    : "bg-white hover:bg-slate-100 border-slate-200 text-slate-700"
-                              }`}
-                              onClick={() =>
-                                updateItem(selected.id, it.id, { ok: true })
-                              }
-                            >
-                              OK
-                            </button>
-
-                            <button
-                              disabled={locked}
-                              className={`text-xs px-2 py-1 rounded border ${
-                                locked
-                                  ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
-                                  : it.ok === false
-                                    ? "bg-red-50 text-red-700 border-red-200"
-                                    : "bg-white hover:bg-slate-100 border-slate-200 text-slate-700"
-                              }`}
-                              onClick={() =>
-                                updateItem(selected.id, it.id, { ok: false })
-                              }
-                            >
-                              NO
-                            </button>
-
-                            <button
-                              disabled={locked}
-                              className="text-xs px-2 py-1 rounded border bg-white hover:bg-slate-100 border-slate-200 text-slate-700"
-                              onClick={() =>
-                                updateItem(selected.id, it.id, { ok: null })
-                              }
-                            >
-                              —
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="mt-2 flex items-center justify-between gap-2">
-                          <div className="text-xs text-slate-500">
-                            Resultado: <ResultBadge ok={it.ok} />
-                          </div>
-
-                          <button
-                            disabled={locked || it.ok !== false}
-                            className={`text-xs px-2 py-1 rounded border ${
-                              locked || it.ok !== false
-                                ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
-                                : "bg-white hover:bg-slate-100 border-slate-200 text-slate-700"
-                            }`}
-                            onClick={() => addFindingFromItem(selected.id, it)}
-                          >
-                            + Hallazgo
-                          </button>
-                        </div>
-
-                        <div className="mt-2">
-                          <div className="text-xs text-slate-500 mb-1">
-                            Comentario
-                          </div>
-
-                          <input
-                            disabled={locked}
-                            className={`w-full border rounded px-3 py-2 text-sm ${
-                              locked
-                                ? "bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed"
-                                : "bg-white border-slate-200"
-                            }`}
-                            placeholder="Detalle del hallazgo..."
-                            defaultValue={it.comentario || ""}
-                            onBlur={(e) =>
-                              updateItem(selected.id, it.id, {
-                                comentario: e.target.value,
-                              })
-                            }
-                          />
-                        </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm text-slate-500">{`INSP-${selected.id}`}</div>
+                      <div className="font-semibold text-slate-800">
+                        {selected.checklist}
                       </div>
-                    ))}
-                  </div>
-                </div>
+                      <div className="text-sm text-slate-600">
+                        {selected.area} •{" "}
+                        {new Date(selected.fecha).toLocaleDateString("es-PE", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                        })}
+                      </div>
 
-                {/* Hallazgos */}
-                <div>
-                  <div className="text-sm font-semibold text-slate-800 mb-2">
-                    Hallazgos
-                  </div>
-                  {(selected.findings || []).length === 0 ? (
-                    <div className="text-sm text-slate-600">
-                      No hay hallazgos registrados.
+                      <div className="text-xs text-slate-500 mt-1">
+                        Responsable:{" "}
+                        <span className="text-slate-700 font-semibold">
+                          {selected.responsable || "—"}
+                        </span>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {selected.findings.map((f) => (
-                        <div
-                          key={f.id}
-                          className="p-3 rounded border border-slate-200 bg-white"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <div className="text-sm font-semibold text-slate-800">
-                                {f.titulo}
-                              </div>
-                              <div className="text-xs text-slate-500 mt-1">
-                                Categoría:{" "}
-                                <span className="text-slate-700 font-semibold">
-                                  {f.categoria || "—"}
-                                </span>
-                              </div>
-                            </div>
+                    <StatusBadge status={selected.status} />
+                  </div>
 
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded border border-slate-200 bg-white">
+                      <div className="text-xs text-slate-500 mb-1">
+                        % Cumplimiento
+                      </div>
+                      <div className="text-2xl font-semibold text-slate-900">
+                        {selected.cumplimiento === null
+                          ? "—"
+                          : `${selected.cumplimiento}%`}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-1">
+                        Auto-calculado según respuestas
+                      </div>
+                    </div>
+                    <div className="p-3 rounded border border-slate-200 bg-white">
+                      <div className="text-xs text-slate-500 mb-1">
+                        Hallazgos abiertos
+                      </div>
+                      <div className="text-2xl font-semibold text-slate-900">
+                        {
+                          (selected.findings || []).filter(
+                            (f) => f.estado !== "Cerrado",
+                          ).length
+                        }
+                      </div>
+                      <div className="text-xs text-slate-500 mt-1">
+                        Desde checklist / manual
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Checklist interactive */}
+                  <div>
+                    <div className="text-sm font-semibold text-slate-800 mb-2">
+                      Checklist
+                    </div>
+                    <div className="space-y-2">
+                      {selected.items?.map((it) => (
+                        <div
+                          key={it.id}
+                          className="border rounded p-3 bg-slate-50"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="text-sm text-slate-800 font-medium">
+                              {it.q}
+                            </div>
                             <div className="flex items-center gap-2">
-                              <SeverityBadge sev={f.severidad} />
-                              <StatusBadge
-                                status={
-                                  f.estado === "Cerrado"
-                                    ? "Completada"
-                                    : "En proceso"
+                              <button
+                                disabled={locked}
+                                className={`text-xs px-2 py-1 rounded border ${
+                                  locked
+                                    ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                                    : it.ok === true
+                                      ? "bg-green-50 text-green-700 border-green-200"
+                                      : "bg-white hover:bg-slate-100 border-slate-200 text-slate-700"
+                                }`}
+                                onClick={() =>
+                                  updateItem(selected.id, it.id, { ok: true })
                                 }
-                              />
+                              >
+                                OK
+                              </button>
+
+                              <button
+                                disabled={locked}
+                                className={`text-xs px-2 py-1 rounded border ${
+                                  locked
+                                    ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                                    : it.ok === false
+                                      ? "bg-red-50 text-red-700 border-red-200"
+                                      : "bg-white hover:bg-slate-100 border-slate-200 text-slate-700"
+                                }`}
+                                onClick={() =>
+                                  updateItem(selected.id, it.id, { ok: false })
+                                }
+                              >
+                                NO
+                              </button>
+
+                              <button
+                                disabled={locked}
+                                className="text-xs px-2 py-1 rounded border bg-white hover:bg-slate-100 border-slate-200 text-slate-700"
+                                onClick={() =>
+                                  updateItem(selected.id, it.id, { ok: null })
+                                }
+                              >
+                                —
+                              </button>
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-12 gap-2 mt-3">
-                            <div className="col-span-12 md:col-span-4">
-                              <div className="text-xs text-slate-500 mb-1">
-                                Severidad
-                              </div>
-
-                              <select
-                                disabled={locked}
-                                className={`w-full border border-slate-200 rounded px-3 py-2 text-sm ${
-                                  locked
-                                    ? "bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed"
-                                    : "bg-white border-slate-200"
-                                }`}
-                                value={f.severidad}
-                                onChange={(e) =>
-                                  updateFinding(selected.id, f.id, {
-                                    severidad: e.target.value,
-                                  })
-                                }
-                              >
-                                <option value="Baja">Baja</option>
-                                <option value="Media">Media</option>
-                                <option value="Alta">Alta</option>
-                              </select>
+                          <div className="mt-2 flex items-center justify-between gap-2">
+                            <div className="text-xs text-slate-500">
+                              Resultado: <ResultBadge ok={it.ok} />
                             </div>
 
-                            <div className="col-span-12 md:col-span-8">
-                              <div className="text-xs text-slate-500 mb-1">
-                                Acción recomendada
-                              </div>
+                            <button
+                              disabled={locked || it.ok !== false}
+                              className={`text-xs px-2 py-1 rounded border ${
+                                locked || it.ok !== false
+                                  ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                                  : "bg-white hover:bg-slate-100 border-slate-200 text-slate-700"
+                              }`}
+                              onClick={() =>
+                                addFindingFromItem(selected.id, it)
+                              }
+                            >
+                              + Hallazgo
+                            </button>
+                          </div>
 
-                              <input
-                                disabled={locked}
-                                className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
-                                value={f.accionRecomendada || ""}
-                                onChange={(e) =>
-                                  updateFinding(selected.id, f.id, {
-                                    accionRecomendada: e.target.value,
-                                  })
-                                }
-                              />
+                          <div className="mt-2">
+                            <div className="text-xs text-slate-500 mb-1">
+                              Comentario
                             </div>
 
-                            <div className="col-span-12 flex items-center justify-between mt-1">
-                              <button
-                                disabled={locked}
-                                className={`text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200 ${
-                                  locked
-                                    ? "bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed"
-                                    : "bg-white border-slate-200"
-                                }`}
-                                onClick={() =>
-                                  createActionFromFinding(selected.id, f)
-                                }
-                              >
-                                Crear acción CAPA
-                              </button>
-
-                              <button
-                                disabled={locked}
-                                // className="text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200"
-                                className={`text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200 ${
-                                  locked
-                                    ? "bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed"
-                                    : "bg-white border-slate-200"
-                                }`}
-                                onClick={() =>
-                                  updateFinding(selected.id, f.id, {
-                                    estado:
-                                      f.estado === "Cerrado"
-                                        ? "Abierto"
-                                        : "Cerrado",
-                                  })
-                                }
-                              >
-                                {f.estado === "Cerrado" ? "Reabrir" : "Cerrar"}
-                              </button>
-                            </div>
+                            <input
+                              disabled={locked}
+                              className={`w-full border rounded px-3 py-2 text-sm ${
+                                locked
+                                  ? "bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed"
+                                  : "bg-white border-slate-200"
+                              }`}
+                              placeholder="Detalle del hallazgo..."
+                              defaultValue={it.comentario || ""}
+                              onBlur={(e) =>
+                                updateItem(selected.id, it.id, {
+                                  comentario: e.target.value,
+                                })
+                              }
+                            />
                           </div>
                         </div>
                       ))}
                     </div>
-                  )}
-                </div>
-
-                {/* Actions for this inspection */}
-                <div>
-                  <div className="text-sm font-semibold text-slate-800 mb-2">
-                    Acciones (CAPA)
                   </div>
-                  <div className="overflow-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="text-left text-slate-600 border-b">
-                          <th className="py-2 pr-3">ID</th>
-                          <th className="py-2 pr-3">Acción</th>
-                          <th className="py-2 pr-3">Resp.</th>
-                          <th className="py-2 pr-3">Estado</th>
-                          <th className="py-2">Acción</th>
-                        </tr>
-                      </thead>
 
-                      <tbody className="text-slate-700">
-                        {actions.map((a) => (
-                          <tr key={a.id} className="border-b last:border-b-0">
-                            <td className="py-2 pr-3 font-semibold">{`ACT-${a.id}`}</td>
-                            <td className="py-2 pr-3">{a.titulo}</td>
-                            <td className="py-2 pr-3">{a.responsable}</td>
-                            <td className="py-2 pr-3">
-                              <StatusBadge
-                                status={
-                                  a.estado === "Cerrada"
-                                    ? "Completada"
-                                    : a.estado === "En proceso"
-                                      ? "En proceso"
-                                      : "Pendiente"
-                                }
-                              />
-                            </td>
-                            <td className="py-2">
-                              <button
-                                disabled={locked}
-                                className={`text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200${
-                                  locked
-                                    ? "bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed"
-                                    : "bg-white border-slate-200"
-                                }`}
-                                // className="text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200"
-                                onClick={() => toggleActionDone(a.id)}
-                              >
-                                {a.estado === "Cerrada" ? "Reabrir" : "Cerrar"}
-                              </button>
-                            </td>
-                          </tr>
+                  {/* Hallazgos */}
+                  <div>
+                    <div className="text-sm font-semibold text-slate-800 mb-2">
+                      Hallazgos
+                    </div>
+                    {(selected.findings || []).length === 0 ? (
+                      <div className="text-sm text-slate-600">
+                        No hay hallazgos registrados.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {selected.findings.map((f) => (
+                          <div
+                            key={f.id}
+                            className="p-3 rounded border border-slate-200 bg-white"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <div className="text-sm font-semibold text-slate-800">
+                                  {f.titulo}
+                                </div>
+                                <div className="text-xs text-slate-500 mt-1">
+                                  Categoría:{" "}
+                                  <span className="text-slate-700 font-semibold">
+                                    {f.categoria || "—"}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <SeverityBadge sev={f.severidad} />
+                                <StatusBadge
+                                  status={
+                                    f.estado === "Cerrado"
+                                      ? "Completada"
+                                      : "En proceso"
+                                  }
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-12 gap-2 mt-3">
+                              <div className="col-span-12 md:col-span-4">
+                                <div className="text-xs text-slate-500 mb-1">
+                                  Severidad
+                                </div>
+
+                                <select
+                                  disabled={locked}
+                                  className={`w-full border border-slate-200 rounded px-3 py-2 text-sm ${
+                                    locked
+                                      ? "bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed"
+                                      : "bg-white border-slate-200"
+                                  }`}
+                                  value={f.severidad}
+                                  onChange={(e) =>
+                                    updateFinding(selected.id, f.id, {
+                                      severidad: e.target.value,
+                                    })
+                                  }
+                                >
+                                  <option value="Baja">Baja</option>
+                                  <option value="Media">Media</option>
+                                  <option value="Alta">Alta</option>
+                                </select>
+                              </div>
+
+                              <div className="col-span-12 md:col-span-8">
+                                <div className="text-xs text-slate-500 mb-1">
+                                  Acción recomendada
+                                </div>
+
+                                <input
+                                  disabled={locked}
+                                  className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
+                                  value={f.accionRecomendada || ""}
+                                  onChange={(e) =>
+                                    updateFinding(selected.id, f.id, {
+                                      accionRecomendada: e.target.value,
+                                    })
+                                  }
+                                />
+                              </div>
+
+                              <div className="col-span-12 flex items-center justify-between mt-1">
+                                <button
+                                  disabled={locked}
+                                  className={`text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200 ${
+                                    locked
+                                      ? "bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed"
+                                      : "bg-white border-slate-200"
+                                  }`}
+                                  onClick={() =>
+                                    createActionFromFinding(selected.id, f)
+                                  }
+                                >
+                                  Crear acción CAPA
+                                </button>
+
+                                <button
+                                  disabled={locked}
+                                  // className="text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200"
+                                  className={`text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200 ${
+                                    locked
+                                      ? "bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed"
+                                      : "bg-white border-slate-200"
+                                  }`}
+                                  onClick={() =>
+                                    updateFinding(selected.id, f.id, {
+                                      estado:
+                                        f.estado === "Cerrado"
+                                          ? "Abierto"
+                                          : "Cerrado",
+                                    })
+                                  }
+                                >
+                                  {f.estado === "Cerrado"
+                                    ? "Reabrir"
+                                    : "Cerrar"}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         ))}
-
-                        {actions.length === 0 && (
-                          <tr>
-                            <td
-                              colSpan={5}
-                              className="py-4 text-center text-slate-500"
-                            >
-                              No hay acciones creadas para esta inspección.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
+                      </div>
+                    )}
                   </div>
-                </div>
 
-                {/* Footer actions */}
-                <div className="flex flex-wrap gap-2">
-                  {/* <button
+                  {/* Actions for this inspection */}
+                  <div>
+                    <div className="text-sm font-semibold text-slate-800 mb-2">
+                      Acciones (CAPA)
+                    </div>
+                    <div className="overflow-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-slate-600 border-b">
+                            <th className="py-2 pr-3">ID</th>
+                            <th className="py-2 pr-3">Acción</th>
+                            <th className="py-2 pr-3">Resp.</th>
+                            <th className="py-2 pr-3">Estado</th>
+                            <th className="py-2">Acción</th>
+                          </tr>
+                        </thead>
+
+                        <tbody className="text-slate-700">
+                          {actions.map((a) => (
+                            <tr key={a.id} className="border-b last:border-b-0">
+                              <td className="py-2 pr-3 font-semibold">{`ACT-${a.id}`}</td>
+                              <td className="py-2 pr-3">{a.titulo}</td>
+                              <td className="py-2 pr-3">{a.responsable}</td>
+                              <td className="py-2 pr-3">
+                                <StatusBadge
+                                  status={
+                                    a.estado === "Cerrada"
+                                      ? "Completada"
+                                      : a.estado === "En proceso"
+                                        ? "En proceso"
+                                        : "Pendiente"
+                                  }
+                                />
+                              </td>
+                              <td className="py-2">
+                                <button
+                                  disabled={locked}
+                                  className={`text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200${
+                                    locked
+                                      ? "bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed"
+                                      : "bg-white border-slate-200"
+                                  }`}
+                                  // className="text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-50 text-slate-700 border-slate-200"
+                                  onClick={() => toggleActionDone(a.id)}
+                                >
+                                  {a.estado === "Cerrada"
+                                    ? "Reabrir"
+                                    : "Cerrar"}
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+
+                          {actions.length === 0 && (
+                            <tr>
+                              <td
+                                colSpan={5}
+                                className="py-4 text-center text-slate-500"
+                              >
+                                No hay acciones creadas para esta inspección.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Footer actions */}
+                  <div className="flex flex-wrap gap-2">
+                    {/* <button
                     className="px-4 py-2 rounded border hover:bg-slate-50"
                     onClick={() => setIsEditing((prev) => !prev)}
                     disabled={selected.status === "Completada"}
                   >
                     {isEditing ? "Cancelar edición" : "Editar"}
                   </button> */}
-                  <button
-                    className="px-4 py-2 rounded border hover:bg-slate-50"
-                    onClick={() => setIsEditing((prev) => !prev)}
-                  >
-                    {isEditing ? "Cancelar edición" : "Editar"}
-                  </button>
-
-                  {(selected.status !== "Completada" || isEditing) && (
                     <button
-                      className="px-4 py-2 rounded bg-slate-900 text-white hover:bg-slate-700"
-                      onClick={() => toggleCloseInspection(selected.id)}
+                      className="px-4 py-2 rounded border hover:bg-slate-50"
+                      onClick={() => setIsEditing((prev) => !prev)}
                     >
-                      {selected.status === "Completada"
-                        ? "Reabrir inspección"
-                        : "Cerrar inspección"}
+                      {isEditing ? "Cancelar edición" : "Editar"}
                     </button>
-                  )}
-                </div>
-              </div>
-            )}
-          </Card>
-        </div>
-      </div>
 
+                    {(selected.status !== "Completada" || isEditing) && (
+                      <button
+                        className="px-4 py-2 rounded bg-slate-900 text-white hover:bg-slate-700"
+                        onClick={() => toggleCloseInspection(selected.id)}
+                      >
+                        {selected.status === "Completada"
+                          ? "Reabrir inspección"
+                          : "Cerrar inspección"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </Card>
+          </div>
+        </div>
+
+        <ModalCrearChecklist
+          open={checklistModalOpen}
+          onClose={() => setChecklistModalOpen(false)}
+          onSave={(newChecklist) => {
+            setChecklists((prev) => [...prev, newChecklist]);
+            setNewInspection((x) => ({ ...x, idChecklist: newChecklist.id }));
+            setChecklistModalOpen(false);
+          }}
+        />
+      </main>
       {/* Create modal */}
       <Modal
         open={createOpen}
@@ -1365,16 +1384,6 @@ export default function Inspections() {
           </div>
         </div>
       </Modal>
-
-      <ModalCrearChecklist
-        open={checklistModalOpen}
-        onClose={() => setChecklistModalOpen(false)}
-        onSave={(newChecklist) => {
-          setChecklists((prev) => [...prev, newChecklist]);
-          setNewInspection((x) => ({ ...x, idChecklist: newChecklist.id }));
-          setChecklistModalOpen(false);
-        }}
-      />
-    </main>
+    </>
   );
 }
